@@ -78,7 +78,7 @@ You can save multiple API configurations and switch between them:
 | Groq | `https://api.groq.com/openai/v1/chat/completions` |
 | DeepSeek | `https://api.deepseek.com/chat/completions` |
 | Moonshot | `https://api.moonshot.ai/v1/chat/completions` |
-| Kimi Code | `https://api.kimi.com/coding/v1/chat/completions` |
+| OpenRouter | `https://openrouter.ai/api/v1/chat/completions` |
 | LM Studio (local) | `http://localhost:1234/v1/chat/completions` |
 | Ollama (local) | `http://localhost:11434/v1/chat/completions` |
 
