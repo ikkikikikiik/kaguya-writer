@@ -156,27 +156,53 @@ async function buildContextMenus() {
     // Remove all existing menus
     await chrome.contextMenus.removeAll();
     
-    // Create parent menu
-    chrome.contextMenus.create({
-      id: 'kaguya-writer',
-      title: '🌙 Kaguya Writer',
-      contexts: ['selection']
-    });
-    
     // Get actions from storage or cache
     const actions = actionsCache || DEFAULT_ACTIONS;
     
-    // Create child menus
-    for (const action of actions) {
+    // Separate actions by mode
+    const rewriteActions = actions.filter(a => a.mode === 'rewrite');
+    const createActions = actions.filter(a => a.mode === 'create');
+    
+    // Create parent menu for rewrite actions (requires selection)
+    if (rewriteActions.length > 0) {
       chrome.contextMenus.create({
-        id: action.id,
-        parentId: 'kaguya-writer',
-        title: action.label,
+        id: 'kaguya-writer-rewrite',
+        title: '🌙 Kaguya Writer',
         contexts: ['selection']
       });
+      
+      for (const action of rewriteActions) {
+        chrome.contextMenus.create({
+          id: action.id,
+          parentId: 'kaguya-writer-rewrite',
+          title: action.label,
+          contexts: ['selection']
+        });
+      }
     }
     
-    console.log('[Kaguya Writer] Context menus built');
+    // Create parent menu for create actions (works on page or selection)
+    if (createActions.length > 0) {
+      chrome.contextMenus.create({
+        id: 'kaguya-writer-create',
+        title: '🌙 Kaguya Writer',
+        contexts: ['page', 'selection']
+      });
+      
+      for (const action of createActions) {
+        chrome.contextMenus.create({
+          id: action.id,
+          parentId: 'kaguya-writer-create',
+          title: action.label,
+          contexts: ['page', 'selection']
+        });
+      }
+    }
+    
+    console.log('[Kaguya Writer] Context menus built:', {
+      rewrite: rewriteActions.length,
+      create: createActions.length
+    });
   } catch (error) {
     console.error('[Kaguya Writer] Error building context menus:', error);
   }
@@ -222,7 +248,8 @@ async function getActiveProfile() {
 // Handle context menu clicks
 // CRITICAL: sidePanel.open() must be called SYNCHRONOUSLY in response to user gesture
 chrome.contextMenus.onClicked.addListener((info, tab) => {
-  if (info.menuItemId === 'kaguya-writer' || !info.selectionText) {
+  // Skip parent menus
+  if (info.menuItemId === 'kaguya-writer-create' || info.menuItemId === 'kaguya-writer-rewrite') {
     return;
   }
   
@@ -235,6 +262,9 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     return;
   }
   
+  // Determine the text to use
+  let selectedText = info.selectionText || '';
+  
   // For CREATE mode: Open side panel IMMEDIATELY (synchronously as possible)
   // This must happen BEFORE any async operations to preserve user gesture context
   if (action.mode === 'create') {
@@ -244,24 +274,33 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     // Then handle the rest asynchronously
     openPromise.then(() => {
       sidePanelOpen = true;
-      handleCreateMode(action, info.selectionText);
+      // If no selection, get page content; otherwise use selection
+      if (selectedText) {
+        handleCreateMode(action, selectedText);
+      } else {
+        handleCreateModeWithPageContent(action, tab);
+      }
     }).catch(error => {
       console.error('[Kaguya Writer] Failed to open side panel:', error);
     });
   } 
-  // For REWRITE mode: Can proceed async (no side panel needed immediately)
+  // For REWRITE mode: Must have selection
   else if (action.mode === 'rewrite') {
-    handleRewriteMode(action, info.selectionText, tab);
+    if (!selectedText) {
+      console.error('[Kaguya Writer] Rewrite mode requires text selection');
+      return;
+    }
+    handleRewriteMode(action, selectedText, tab);
   }
 });
 
-// Handle create mode (summary, brainstorm, etc.)
+// Handle create mode with selected text
 async function handleCreateMode(action, selectedText) {
   try {
     const profile = await getActiveProfile();
     
     if (!profile || !profile.apiKey) {
-      await new Promise(r => setTimeout(r, 300)); // Wait for side panel to be ready
+      await new Promise(r => setTimeout(r, 300));
       await sendToSidePanel({
         type: 'STREAM_ERROR',
         error: 'Please configure your API key in the Settings tab'
@@ -276,6 +315,63 @@ async function handleCreateMode(action, selectedText) {
     await sendToSidePanel({
       type: 'STREAM_ERROR',
       error: error.message
+    });
+  }
+}
+
+// Handle create mode with full page content
+async function handleCreateModeWithPageContent(action, tab) {
+  try {
+    // Inject content script to get page content
+    let pageContent = '';
+    try {
+      // Try to get content from existing content script
+      const response = await chrome.tabs.sendMessage(tab.id, { type: 'GET_PAGE_CONTENT' });
+      pageContent = response.content;
+    } catch (e) {
+      // Content script not loaded, inject it
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: ['content.js']
+      });
+      await new Promise(r => setTimeout(r, 100));
+      const response = await chrome.tabs.sendMessage(tab.id, { type: 'GET_PAGE_CONTENT' });
+      pageContent = response.content;
+    }
+    
+    if (!pageContent || pageContent.trim().length === 0) {
+      await new Promise(r => setTimeout(r, 300));
+      await sendToSidePanel({
+        type: 'STREAM_ERROR',
+        error: 'Could not extract page content. Try selecting text instead.'
+      });
+      return;
+    }
+    
+    // Truncate if too long (most APIs have token limits)
+    const MAX_CHARS = 15000;
+    if (pageContent.length > MAX_CHARS) {
+      pageContent = pageContent.substring(0, MAX_CHARS) + '\n\n[Content truncated due to length]';
+    }
+    
+    const profile = await getActiveProfile();
+    
+    if (!profile || !profile.apiKey) {
+      await new Promise(r => setTimeout(r, 300));
+      await sendToSidePanel({
+        type: 'STREAM_ERROR',
+        error: 'Please configure your API key in the Settings tab'
+      });
+      return;
+    }
+    
+    const prompt = action.prompt_template.replace(/\{\{text\}\}/g, pageContent);
+    await streamToSidePanel(profile, prompt);
+  } catch (error) {
+    console.error('[Kaguya Writer] Create mode with page content error:', error);
+    await sendToSidePanel({
+      type: 'STREAM_ERROR',
+      error: 'Failed to extract page content: ' + error.message
     });
   }
 }

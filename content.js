@@ -18,7 +18,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         showToast('Error: ' + error.message, 'error');
         sendResponse({ success: false, error: error.message });
       });
-    return true; // Keep channel open for async
+    return true;
   } else if (message.type === 'SHOW_TOAST') {
     showToast(message.message, 'info', message.duration || 3000);
     sendResponse({ success: true });
@@ -31,6 +31,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   } else if (message.type === 'GENERATING_END') {
     hideGeneratingToast();
     sendResponse({ success: true });
+  } else if (message.type === 'GET_PAGE_CONTENT') {
+    try {
+      const content = extractPageContent();
+      sendResponse({ success: true, content });
+    } catch (error) {
+      console.error('[Kaguya Writer] Content extraction error:', error);
+      sendResponse({ success: false, error: error.message });
+    }
+    return true;
   }
 });
 
@@ -338,6 +347,95 @@ function showToast(message, type = 'info', duration = 3000) {
     toast.style.animation = 'kaguya-toast-out 0.3s ease forwards';
     setTimeout(() => toast.remove(), 300);
   }, duration);
+}
+
+// Extract main content from the webpage
+function extractPageContent() {
+  // Try to find main content area using common selectors
+  const contentSelectors = [
+    'article',
+    'main',
+    '[role="main"]',
+    '.content',
+    '.post-content',
+    '.entry-content',
+    '.article-content',
+    '#content',
+    '#main-content'
+  ];
+  
+  let mainContent = null;
+  
+  // Try each selector
+  for (const selector of contentSelectors) {
+    const element = document.querySelector(selector);
+    if (element) {
+      mainContent = element;
+      break;
+    }
+  }
+  
+  // If no main content found, use body but try to clean it up
+  const contentElement = mainContent || document.body;
+  
+  // Clone the element to avoid modifying the page
+  const clone = contentElement.cloneNode(true);
+  
+  // Remove unwanted elements
+  const unwantedSelectors = [
+    'script',
+    'style',
+    'nav',
+    'header',
+    'footer',
+    'aside',
+    '[role="navigation"]',
+    '[role="complementary"]',
+    '.sidebar',
+    '.menu',
+    '.navigation',
+    '.ads',
+    '.advertisement',
+    '.social-share',
+    '.comments',
+    '.related-posts',
+    '.tag-cloud',
+    'iframe',
+    'button',
+    'input',
+    'select',
+    'textarea'
+  ];
+  
+  for (const selector of unwantedSelectors) {
+    const elements = clone.querySelectorAll(selector);
+    elements.forEach(el => el.remove());
+  }
+  
+  // Get text content
+  let text = clone.textContent || '';
+  
+  // Clean up whitespace
+  text = text.replace(/\s+/g, ' ').trim();
+  
+  // Add page title and metadata
+  const title = document.title || '';
+  const url = window.location.href;
+  const description = document.querySelector('meta[name="description"]')?.content || '';
+  
+  let result = '';
+  if (title) {
+    result += `Title: ${title}\n`;
+  }
+  if (description && description !== title) {
+    result += `Description: ${description}\n`;
+  }
+  if (result) {
+    result += `URL: ${url}\n\n`;
+  }
+  result += text;
+  
+  return result;
 }
 
 // Log initialization
