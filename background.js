@@ -348,12 +348,6 @@ async function handleCreateModeWithPageContent(action, tab) {
       return;
     }
     
-    // Truncate if too long (most APIs have token limits)
-    const MAX_CHARS = 15000;
-    if (pageContent.length > MAX_CHARS) {
-      pageContent = pageContent.substring(0, MAX_CHARS) + '\n\n[Content truncated due to length]';
-    }
-    
     const profile = await getActiveProfile();
     
     if (!profile || !profile.apiKey) {
