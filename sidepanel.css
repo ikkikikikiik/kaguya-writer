@@ -300,6 +300,35 @@ body {
   color: var(--accent-secondary);
 }
 
+/* Tables */
+.message-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: var(--spacing-sm) 0;
+  font-size: 0.95em;
+}
+
+.message-content th,
+.message-content td {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  text-align: left;
+  border: 1px solid var(--border-color);
+}
+
+.message-content th {
+  background: var(--bg-tertiary);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.message-content td {
+  background: var(--bg-secondary);
+}
+
+.message-content tr:nth-child(even) td {
+  background: rgba(255, 255, 255, 0.02);
+}
+
 /* Streaming Indicator */
 .message.streaming .message-content::after {
   content: '▋';

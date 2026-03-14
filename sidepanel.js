@@ -253,6 +253,64 @@ function renderMessage(message) {
   elements.chatMessages.appendChild(msgEl);
 }
 
+// Parse Markdown tables
+function parseTables(html) {
+  // Match table blocks: lines starting with | and containing |
+  const tableRegex = /(^|\n)((?:\|[^\n]*\|[\n]?)+)/g;
+  
+  return html.replace(tableRegex, (match, prefix, tableBlock) => {
+    const lines = tableBlock.trim().split('\n').filter(line => line.trim());
+    
+    if (lines.length < 2) return match; // Need at least header and separator
+    
+    // Check if second line is separator (|---|)
+    const separatorLine = lines[1];
+    const isSeparator = /^\|[\s\-:|]+\|$/.test(separatorLine) || /^\|[\s\-:|]+\|/.test(separatorLine);
+    
+    if (!isSeparator) return match; // Not a valid table
+    
+    let tableHtml = '<table>';
+    
+    // Parse header
+    const headerCells = parseTableRow(lines[0]);
+    tableHtml += '<thead><tr>';
+    headerCells.forEach(cell => {
+      tableHtml += `<th>${cell.trim()}</th>`;
+    });
+    tableHtml += '</tr></thead>';
+    
+    // Parse body (skip separator line)
+    if (lines.length > 2) {
+      tableHtml += '<tbody>';
+      for (let i = 2; i < lines.length; i++) {
+        const rowCells = parseTableRow(lines[i]);
+        if (rowCells.length > 0) {
+          tableHtml += '<tr>';
+          rowCells.forEach(cell => {
+            tableHtml += `<td>${cell.trim()}</td>`;
+          });
+          tableHtml += '</tr>';
+        }
+      }
+      tableHtml += '</tbody>';
+    }
+    
+    tableHtml += '</table>';
+    return prefix + tableHtml;
+  });
+}
+
+// Parse a single table row into cells
+function parseTableRow(row) {
+  // Remove leading and trailing |
+  let cleanRow = row.trim();
+  if (cleanRow.startsWith('|')) cleanRow = cleanRow.slice(1);
+  if (cleanRow.endsWith('|')) cleanRow = cleanRow.slice(0, -1);
+  
+  // Split by | and handle escaped pipes if any
+  return cleanRow.split('|').map(cell => cell.trim());
+}
+
 // Format message content with Markdown support
 function formatMessageContent(content) {
   if (!content) return '';
@@ -311,6 +369,9 @@ function formatMessageContent(content) {
   
   // Links [text](url)
   html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+  
+  // Tables (Markdown table syntax)
+  html = parseTables(html);
   
   // Reduce multiple consecutive newlines to a single paragraph break
   // First, normalize multiple newlines
