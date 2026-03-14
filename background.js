@@ -150,7 +150,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   return true;
 });
 
-// Build context menus with hierarchical structure
+// Build context menus - flat structure with separators
 async function buildContextMenus() {
   try {
     await chrome.contextMenus.removeAll();
@@ -191,7 +191,7 @@ async function buildContextMenus() {
       }
     }
     
-    // Create parent menu for text selection (all actions with hierarchy)
+    // Create parent menu for text selection - FLAT structure
     if (quickActions.length > 0 || rewriteActions.length > 0 || toneActions.length > 0 || 
         lengthActions.length > 0 || createActions.length > 0) {
       chrome.contextMenus.create({
@@ -204,7 +204,7 @@ async function buildContextMenus() {
       if (quickActions.length > 0) {
         for (const action of quickActions) {
           chrome.contextMenus.create({
-            id: `sel-quick-${action.id}`,
+            id: `sel-${action.id}`,
             parentId: 'kaguya-writer-selection',
             title: action.label,
             contexts: ['selection']
@@ -221,65 +221,42 @@ async function buildContextMenus() {
         });
       }
       
-      // Rewrite Section Header
-      if (rewriteActions.length > 0 || toneActions.length > 0 || lengthActions.length > 0) {
-        // Rewrite sub-menu
-        chrome.contextMenus.create({
-          id: 'rewrite-submenu',
-          parentId: 'kaguya-writer-selection',
-          title: 'Rewrite ▶',
-          contexts: ['selection']
-        });
-        
-        // Direct rewrite actions
+      // Rewrite Actions (flat list)
+      if (rewriteActions.length > 0) {
         for (const action of rewriteActions) {
           chrome.contextMenus.create({
-            id: `sel-rewrite-${action.id}`,
-            parentId: 'rewrite-submenu',
+            id: `sel-${action.id}`,
+            parentId: 'kaguya-writer-selection',
             title: action.label,
             contexts: ['selection']
           });
         }
-        
-        // Change Tone sub-submenu
-        if (toneActions.length > 0) {
+      }
+      
+      // Tone Actions (flat list with prefix)
+      if (toneActions.length > 0) {
+        for (const action of toneActions) {
           chrome.contextMenus.create({
-            id: 'tone-submenu',
-            parentId: 'rewrite-submenu',
-            title: 'Change tone ▶',
+            id: `sel-${action.id}`,
+            parentId: 'kaguya-writer-selection',
+            title: `Tone: ${action.label}`,
             contexts: ['selection']
           });
-          
-          for (const action of toneActions) {
-            chrome.contextMenus.create({
-              id: `sel-tone-${action.id}`,
-              parentId: 'tone-submenu',
-              title: action.label,
-              contexts: ['selection']
-            });
-          }
         }
-        
-        // Change Length sub-submenu
-        if (lengthActions.length > 0) {
+      }
+      
+      // Length Actions (flat list with prefix)
+      if (lengthActions.length > 0) {
+        for (const action of lengthActions) {
           chrome.contextMenus.create({
-            id: 'length-submenu',
-            parentId: 'rewrite-submenu',
-            title: 'Change length ▶',
+            id: `sel-${action.id}`,
+            parentId: 'kaguya-writer-selection',
+            title: `Length: ${action.label}`,
             contexts: ['selection']
           });
-          
-          for (const action of lengthActions) {
-            chrome.contextMenus.create({
-              id: `sel-length-${action.id}`,
-              parentId: 'length-submenu',
-              title: action.label,
-              contexts: ['selection']
-            });
-          }
         }
         
-        // Separator after rewrite
+        // Separator after rewrite/length section
         chrome.contextMenus.create({
           id: 'sep-after-rewrite',
           parentId: 'kaguya-writer-selection',
@@ -289,20 +266,12 @@ async function buildContextMenus() {
         });
       }
       
-      // Create Section
+      // Create Actions (flat list)
       if (createActions.length > 0) {
-        // Create sub-menu
-        chrome.contextMenus.create({
-          id: 'create-submenu',
-          parentId: 'kaguya-writer-selection',
-          title: 'Create ▶',
-          contexts: ['selection']
-        });
-        
         for (const action of createActions) {
           chrome.contextMenus.create({
-            id: `sel-create-${action.id}`,
-            parentId: 'create-submenu',
+            id: `sel-${action.id}`,
+            parentId: 'kaguya-writer-selection',
             title: action.label,
             contexts: ['selection']
           });
@@ -310,7 +279,7 @@ async function buildContextMenus() {
       }
     }
     
-    console.log('[Kaguya Writer] Context menus built with hierarchy');
+    console.log('[Kaguya Writer] Context menus built - flat structure');
   } catch (error) {
     console.error('[Kaguya Writer] Error building context menus:', error);
   }
@@ -337,10 +306,6 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   // Skip parent menus and separators
   if (info.menuItemId === 'kaguya-writer-page' || 
       info.menuItemId === 'kaguya-writer-selection' ||
-      info.menuItemId === 'rewrite-submenu' ||
-      info.menuItemId === 'tone-submenu' ||
-      info.menuItemId === 'length-submenu' ||
-      info.menuItemId === 'create-submenu' ||
       info.menuItemId.startsWith('sep-')) {
     return;
   }
@@ -352,16 +317,8 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   
   if (actionId.startsWith('page-')) {
     actionId = actionId.replace('page-', '');
-  } else if (actionId.startsWith('sel-quick-')) {
-    actionId = actionId.replace('sel-quick-', '');
-  } else if (actionId.startsWith('sel-rewrite-')) {
-    actionId = actionId.replace('sel-rewrite-', '');
-  } else if (actionId.startsWith('sel-tone-')) {
-    actionId = actionId.replace('sel-tone-', '');
-  } else if (actionId.startsWith('sel-length-')) {
-    actionId = actionId.replace('sel-length-', '');
-  } else if (actionId.startsWith('sel-create-')) {
-    actionId = actionId.replace('sel-create-', '');
+  } else if (actionId.startsWith('sel-')) {
+    actionId = actionId.replace('sel-', '');
   }
   
   const action = actions.find(a => a.id === actionId);
