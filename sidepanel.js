@@ -532,69 +532,25 @@ function buildMessagesForAPI(currentUserMessage) {
   return messages;
 }
 
-// Make chat API request with streaming
+// Make chat API request with streaming - OpenAI-compatible only
 async function* makeChatRequest(profile, messages) {
   const { apiUrl, apiKey, model } = profile || {};
   
   if (!apiKey) throw new Error('API key not configured');
   if (!apiUrl) throw new Error('API URL not configured');
   
-  const isAnthropic = apiUrl.includes('anthropic');
-  // Check for new OpenAI-compatible Gemini endpoint first
-  const isGeminiOpenAI = apiUrl.includes('generativelanguage') && apiUrl.includes('/openai/');
-  const isGemini = (apiUrl.includes('googleapis') || apiUrl.includes('generativelanguage')) && !isGeminiOpenAI;
-  
-  let endpoint = apiUrl;
-  let requestBody;
-  let headers = {
-    'Authorization': `Bearer ${apiKey}`,
-    'Content-Type': 'application/json'
+  const requestBody = {
+    model: model || 'gpt-4o',
+    messages: messages,
+    stream: true
   };
   
-  const chatMessages = messages.filter(m => m.role !== 'system');
-  
-  if (isAnthropic) {
-    headers['x-api-key'] = apiKey;
-    headers['anthropic-version'] = '2023-06-01';
-    delete headers['Authorization'];
-    
-    let systemPrompt = messages.find(m => m.role === 'system')?.content || '';
-    const conversationMessages = chatMessages.map(m => ({
-      role: m.role === 'assistant' ? 'assistant' : 'user',
-      content: m.content
-    }));
-    
-    requestBody = {
-      model: model || 'claude-3-opus-20240229',
-      max_tokens: 4096,
-      messages: conversationMessages,
-      stream: true
-    };
-    if (systemPrompt) {
-      requestBody.system = systemPrompt;
-    }
-  } else if (isGemini) {
-    const modelName = model || 'gemini-1.5-pro';
-    endpoint = `${apiUrl}/${modelName}:streamGenerateContent?key=${apiKey}`;
-    delete headers['Authorization'];
-    
-    const contents = chatMessages.map(m => ({
-      role: m.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: m.content }]
-    }));
-    
-    requestBody = { contents };
-  } else {
-    requestBody = {
-      model: model || 'gpt-4o',
-      messages: messages,
-      stream: true
-    };
-  }
-  
-  const response = await fetch(endpoint, {
+  const response = await fetch(apiUrl, {
     method: 'POST',
-    headers,
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json'
+    },
     body: JSON.stringify(requestBody)
   });
   
@@ -617,31 +573,12 @@ async function* makeChatRequest(profile, messages) {
       if (!line.trim() || line.trim() === 'data: [DONE]') continue;
       
       try {
-        let text = '';
-        
-        if (isGemini) {
-          // Old Gemini API format
-          const data = JSON.parse(line);
-          if (data.candidates?.[0]?.content?.parts) {
-            text = data.candidates[0].content.parts.map(p => p.text).join('');
-          }
-        } else if (isAnthropic) {
-          if (line.startsWith('data: ')) {
-            const data = JSON.parse(line.slice(6));
-            if (data.type === 'content_block_delta' && data.delta?.text) {
-              text = data.delta.text;
-            }
-          }
-        } else {
-          if (line.startsWith('data: ')) {
-            const data = JSON.parse(line.slice(6));
-            if (data.choices?.[0]?.delta?.content) {
-              text = data.choices[0].delta.content;
-            }
+        if (line.startsWith('data: ')) {
+          const data = JSON.parse(line.slice(6));
+          if (data.choices?.[0]?.delta?.content) {
+            yield data.choices[0].delta.content;
           }
         }
-        
-        if (text) yield text;
       } catch (e) {
         continue;
       }

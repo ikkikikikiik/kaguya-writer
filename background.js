@@ -101,7 +101,7 @@ async function initializeStorage() {
     const migratedProfile = {
       id: 'profile-' + Date.now(),
       name: 'Migrated Profile',
-      apiUrl: result.settings.customUrl || getProviderUrl(result.settings),
+      apiUrl: result.settings.customUrl || result.settings.apiUrl || 'https://api.openai.com/v1/chat/completions',
       apiKey: result.settings.apiKey || '',
       model: result.settings.model || 'gpt-4o'
     };
@@ -111,27 +111,6 @@ async function initializeStorage() {
       settings: migratedProfile
     });
   }
-}
-
-// Get provider URL from old settings format
-function getProviderUrl(settings) {
-  const { provider, customUrl, kimiApiType } = settings || {};
-  
-  const providerUrls = {
-    openai: 'https://api.openai.com/v1/chat/completions',
-    anthropic: 'https://api.anthropic.com/v1/messages',
-    gemini: 'https://generativelanguage.googleapis.com/v1beta/models',
-    groq: 'https://api.groq.com/openai/v1/chat/completions',
-    deepseek: 'https://api.deepseek.com/chat/completions',
-    kimi: {
-      moonshot: 'https://api.moonshot.ai/v1/chat/completions',
-      'kimi-code': 'https://api.kimi.com/coding/v1/chat/completions'
-    }
-  };
-  
-  if (provider === 'custom') return customUrl;
-  if (provider === 'kimi') return providerUrls.kimi[kimiApiType] || providerUrls.kimi.moonshot;
-  return providerUrls[provider] || providerUrls.openai;
 }
 
 // Handle messages from sidepanel
@@ -170,7 +149,6 @@ async function buildContextMenus() {
         contexts: ['page']
       });
       
-      // Quick actions for page context
       for (const action of quickActions) {
         chrome.contextMenus.create({
           id: `page-${action.id}`,
@@ -180,7 +158,6 @@ async function buildContextMenus() {
         });
       }
       
-      // Create actions for page context
       for (const action of createActions) {
         chrome.contextMenus.create({
           id: `page-${action.id}`,
@@ -211,7 +188,6 @@ async function buildContextMenus() {
           });
         }
         
-        // Separator after quick actions
         chrome.contextMenus.create({
           id: 'sep-after-quick',
           parentId: 'kaguya-writer-selection',
@@ -221,7 +197,7 @@ async function buildContextMenus() {
         });
       }
       
-      // Rewrite Actions (flat list)
+      // Rewrite Actions
       if (rewriteActions.length > 0) {
         for (const action of rewriteActions) {
           chrome.contextMenus.create({
@@ -233,7 +209,7 @@ async function buildContextMenus() {
         }
       }
       
-      // Tone Actions (flat list with prefix)
+      // Tone Actions
       if (toneActions.length > 0) {
         for (const action of toneActions) {
           chrome.contextMenus.create({
@@ -245,7 +221,7 @@ async function buildContextMenus() {
         }
       }
       
-      // Length Actions (flat list with prefix)
+      // Length Actions
       if (lengthActions.length > 0) {
         for (const action of lengthActions) {
           chrome.contextMenus.create({
@@ -256,7 +232,6 @@ async function buildContextMenus() {
           });
         }
         
-        // Separator after rewrite/length section
         chrome.contextMenus.create({
           id: 'sep-after-rewrite',
           parentId: 'kaguya-writer-selection',
@@ -266,7 +241,7 @@ async function buildContextMenus() {
         });
       }
       
-      // Create Actions (flat list)
+      // Create Actions
       if (createActions.length > 0) {
         for (const action of createActions) {
           chrome.contextMenus.create({
@@ -303,7 +278,6 @@ async function getActiveProfile() {
 
 // Handle context menu clicks
 chrome.contextMenus.onClicked.addListener((info, tab) => {
-  // Skip parent menus and separators
   if (info.menuItemId === 'kaguya-writer-page' || 
       info.menuItemId === 'kaguya-writer-selection' ||
       info.menuItemId.startsWith('sep-')) {
@@ -312,9 +286,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   
   const actions = actionsCache || DEFAULT_ACTIONS;
   
-  // Extract original action ID from prefixed ID
   let actionId = info.menuItemId;
-  
   if (actionId.startsWith('page-')) {
     actionId = actionId.replace('page-', '');
   } else if (actionId.startsWith('sel-')) {
@@ -329,8 +301,6 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   }
   
   let selectedText = info.selectionText || '';
-  
-  // Apply global instructions
   const fullPrompt = GLOBAL_INSTRUCTIONS + action.prompt_template;
   
   if (action.mode === 'create') {
@@ -468,55 +438,25 @@ async function handleRewriteMode(action, selectedText, tab) {
   }
 }
 
-// Make AI request with streaming
+// Make AI request - OpenAI-compatible format only
 async function* makeAIRequest(profile, prompt) {
   const { apiUrl, apiKey, model } = profile || {};
   
   if (!apiKey) throw new Error('API key not configured');
   if (!apiUrl) throw new Error('API URL not configured');
   
-  const isAnthropic = apiUrl.includes('anthropic');
-  // Check for new OpenAI-compatible Gemini endpoint first
-  const isGeminiOpenAI = apiUrl.includes('generativelanguage') && apiUrl.includes('/openai/');
-  const isGeminiOld = (apiUrl.includes('googleapis') || apiUrl.includes('generativelanguage')) && !isGeminiOpenAI;
-  
-  let endpoint = apiUrl;
-  let requestBody;
-  let headers = {
-    'Authorization': `Bearer ${apiKey}`,
-    'Content-Type': 'application/json'
+  const requestBody = {
+    model: model || 'gpt-4o',
+    messages: [{ role: 'user', content: prompt }],
+    stream: true
   };
   
-  if (isAnthropic) {
-    headers['x-api-key'] = apiKey;
-    headers['anthropic-version'] = '2023-06-01';
-    delete headers['Authorization'];
-    
-    requestBody = {
-      model: model || 'claude-3-opus-20240229',
-      max_tokens: 4096,
-      messages: [{ role: 'user', content: prompt }],
-      stream: true
-    };
-  } else if (isGeminiOld) {
-    // Old Gemini API format
-    const modelName = model || 'gemini-1.5-pro';
-    endpoint = `${apiUrl}/${modelName}:streamGenerateContent?key=${apiKey}`;
-    delete headers['Authorization'];
-    
-    requestBody = { contents: [{ parts: [{ text: prompt }] }] };
-  } else {
-    // OpenAI-compatible format (includes Gemini OpenAI endpoint)
-    requestBody = {
-      model: model || 'gpt-4o',
-      messages: [{ role: 'user', content: prompt }],
-      stream: true
-    };
-  }
-  
-  const response = await fetch(endpoint, {
+  const response = await fetch(apiUrl, {
     method: 'POST',
-    headers,
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json'
+    },
     body: JSON.stringify(requestBody)
   });
   
@@ -539,32 +479,12 @@ async function* makeAIRequest(profile, prompt) {
       if (!line.trim() || line.trim() === 'data: [DONE]') continue;
       
       try {
-        let text = '';
-        
-        if (isGeminiOld) {
-          // Old Gemini API format
-          const data = JSON.parse(line);
-          if (data.candidates?.[0]?.content?.parts) {
-            text = data.candidates[0].content.parts.map(p => p.text).join('');
-          }
-        } else if (isAnthropic) {
-          if (line.startsWith('data: ')) {
-            const data = JSON.parse(line.slice(6));
-            if (data.type === 'content_block_delta' && data.delta?.text) {
-              text = data.delta.text;
-            }
-          }
-        } else {
-          // OpenAI-compatible format (includes Gemini OpenAI endpoint)
-          if (line.startsWith('data: ')) {
-            const data = JSON.parse(line.slice(6));
-            if (data.choices?.[0]?.delta?.content) {
-              text = data.choices[0].delta.content;
-            }
+        if (line.startsWith('data: ')) {
+          const data = JSON.parse(line.slice(6));
+          if (data.choices?.[0]?.delta?.content) {
+            yield data.choices[0].delta.content;
           }
         }
-        
-        if (text) yield text;
       } catch (e) {
         continue;
       }
