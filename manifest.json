@@ -1,0 +1,51 @@
+{
+  "manifest_version": 3,
+  "name": "Kaguya Writer",
+  "version": "1.0.0",
+  "description": "A customizable AI toolkit via the browser context menu",
+  "permissions": [
+    "contextMenus",
+    "storage",
+    "sidePanel",
+    "scripting",
+    "clipboardWrite",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://api.openai.com/*",
+    "https://api.anthropic.com/*",
+    "https://generativelanguage.googleapis.com/*",
+    "https://api.groq.com/*",
+    "https://api.deepseek.com/*",
+    "https://api.moonshot.ai/*",
+    "https://api.kimi.com/*",
+    "http://localhost/*",
+    "https://*/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_end"
+    }
+  ],
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_title": "Open Kaguya Writer",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png"
+    }
+  }
+}

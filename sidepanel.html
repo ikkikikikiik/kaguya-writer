@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kaguya Writer</title>
+  <link rel="stylesheet" href="sidepanel.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header class="header">
+      <h1>🌙 Kaguya Writer</h1>
+      <p class="subtitle">Your AI Writing Toolkit</p>
+    </header>
+
+    <!-- Tabs -->
+    <nav class="tabs">
+      <button class="tab-btn active" data-tab="settings">Settings</button>
+      <button class="tab-btn" data-tab="actions">Action Studio</button>
+      <button class="tab-btn" data-tab="output">Output</button>
+    </nav>
+
+    <!-- Settings Tab -->
+    <section id="settings" class="tab-content active">
+      <div class="card">
+        <h2>API Configuration</h2>
+        
+        <div class="form-group">
+          <label for="provider">Provider</label>
+          <select id="provider">
+            <option value="openai">OpenAI</option>
+            <option value="anthropic">Anthropic</option>
+            <option value="gemini">Google Gemini</option>
+            <option value="groq">Groq</option>
+            <option value="deepseek">DeepSeek</option>
+            <option value="kimi">Kimi (Moonshot AI)</option>
+            <option value="custom">Custom (OpenAI-compatible)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="apiKey">API Key</label>
+          <input type="password" id="apiKey" placeholder="Enter your API key">
+          <small class="hint">Your key is stored locally and never shared.</small>
+        </div>
+
+        <div class="form-group" id="kimiApiTypeGroup" style="display: none;">
+          <label for="kimiApiType">Kimi API Type</label>
+          <select id="kimiApiType">
+            <option value="moonshot">Moonshot API</option>
+            <option value="kimi-code">Kimi Code API</option>
+          </select>
+          <small class="hint">Moonshot API is for general use, Kimi Code API is optimized for coding tasks</small>
+        </div>
+
+        <div class="form-group" id="customUrlGroup" style="display: none;">
+          <label for="customUrl">Custom API URL</label>
+          <input type="text" id="customUrl" placeholder="https://api.example.com/v1/chat/completions">
+        </div>
+
+        <div class="form-group">
+          <label for="model">Model</label>
+          <input type="text" id="model" placeholder="e.g., gpt-4o, claude-3-opus">
+          <small class="hint" id="modelHint">Default: gpt-4o</small>
+        </div>
+
+        <button id="saveSettings" class="btn btn-primary">Save Settings</button>
+        <div id="settingsStatus" class="status"></div>
+      </div>
+    </section>
+
+    <!-- Action Studio Tab -->
+    <section id="actions" class="tab-content">
+      <div class="card">
+        <h2>Dynamic Action Studio</h2>
+        <p class="description">Create custom actions for the context menu.</p>
+        
+        <div class="action-form">
+          <div class="form-group">
+            <label for="actionLabel">Action Name</label>
+            <input type="text" id="actionLabel" placeholder="e.g., Professional Polish">
+          </div>
+
+          <div class="form-group">
+            <label for="actionMode">Mode</label>
+            <select id="actionMode">
+              <option value="rewrite">Rewrite (Replace selected text)</option>
+              <option value="create">Create (Open in panel)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="actionPrompt">Prompt Template</label>
+            <textarea id="actionPrompt" rows="4" placeholder="e.g., Rewrite the following text to be more professional: {{text}}
+
+Use {{text}} as a placeholder for the selected text."></textarea>
+          </div>
+
+          <button id="addAction" class="btn btn-primary">Add Action</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Your Actions</h3>
+        <div id="actionsList" class="actions-list">
+          <p class="empty-state">No custom actions yet. Create one above!</p>
+        </div>
+      </div>
+
+      <div class="card danger-zone">
+        <h3>Reset</h3>
+        <button id="resetActions" class="btn btn-danger">Reset to Default Actions</button>
+      </div>
+    </section>
+
+    <!-- Output Tab -->
+    <section id="output" class="tab-content">
+      <div class="card">
+        <h2>Output</h2>
+        <div class="output-toolbar">
+          <button id="copyOutput" class="btn btn-small">Copy</button>
+          <button id="clearOutput" class="btn btn-small btn-secondary">Clear</button>
+        </div>
+        <textarea id="outputArea" class="output-area" readonly placeholder="AI-generated content will appear here..."></textarea>
+        <div id="outputStatus" class="status"></div>
+      </div>
+    </section>
+  </div>
+
+  <script src="sidepanel.js"></script>
+</body>
+</html>

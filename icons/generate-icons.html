@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Generate Kaguya Writer Icons</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    canvas { border: 1px solid #ccc; margin: 10px; }
+    .icon-container { display: inline-block; text-align: center; }
+  </style>
+</head>
+<body>
+  <h1>Kaguya Writer Icon Generator</h1>
+  <p>Open this file in a browser, then right-click each canvas and save as PNG:</p>
+  <ul>
+    <li>Save 16x16 as <code>icon16.png</code></li>
+    <li>Save 32x32 as <code>icon32.png</code></li>
+    <li>Save 48x48 as <code>icon48.png</code></li>
+    <li>Save 128x128 as <code>icon128.png</code></li>
+  </ul>
+  
+  <div id="icons"></div>
+  
+  <script>
+    const sizes = [16, 32, 48, 128];
+    const container = document.getElementById('icons');
+    
+    sizes.forEach(size => {
+      const div = document.createElement('div');
+      div.className = 'icon-container';
+      
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      canvas.id = `icon${size}`;
+      
+      const ctx = canvas.getContext('2d');
+      
+      // Background - dark purple/blue gradient
+      const gradient = ctx.createLinearGradient(0, 0, size, size);
+      gradient.addColorStop(0, '#1a1a2e');
+      gradient.addColorStop(1, '#16213e');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, size, size);
+      
+      // Moon circle
+      ctx.beginPath();
+      const moonRadius = size * 0.35;
+      ctx.arc(size * 0.5, size * 0.5, moonRadius, 0, Math.PI * 2);
+      ctx.fillStyle = '#f0e6d2';
+      ctx.fill();
+      
+      // Moon shadow (crescent effect)
+      ctx.beginPath();
+      ctx.arc(size * 0.55, size * 0.45, moonRadius * 0.85, 0, Math.PI * 2);
+      ctx.fillStyle = '#1a1a2e';
+      ctx.fill();
+      
+      // Glow effect for larger icons
+      if (size >= 48) {
+        ctx.shadowColor = '#f0e6d2';
+        ctx.shadowBlur = size * 0.1;
+        ctx.beginPath();
+        ctx.arc(size * 0.5, size * 0.5, moonRadius, 0, Math.PI * 2);
+        ctx.fillStyle = '#f0e6d2';
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        
+        ctx.beginPath();
+        ctx.arc(size * 0.55, size * 0.45, moonRadius * 0.85, 0, Math.PI * 2);
+        ctx.fillStyle = '#1a1a2e';
+        ctx.fill();
+      }
+      
+      const label = document.createElement('p');
+      label.textContent = `${size}x${size}`;
+      
+      div.appendChild(canvas);
+      div.appendChild(label);
+      container.appendChild(div);
+    });
+  </script>
+</body>
+</html>
