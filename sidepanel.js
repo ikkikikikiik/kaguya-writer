@@ -312,10 +312,25 @@ function formatMessageContent(content) {
   // Links [text](url)
   html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
   
-  // Line breaks (but not after block elements)
-  html = html.replace(/<\/h[1-4]>\n/g, '$&');
-  html = html.replace(/<\/ul>\n/g, '$&');
-  html = html.replace(/\n/g, '<br>');
+  // Reduce multiple consecutive newlines to a single paragraph break
+  // First, normalize multiple newlines
+  html = html.replace(/\n{3,}/g, '\n\n');
+  
+  // Convert double newlines to paragraph breaks (for separation between blocks)
+  // But only where there isn't already a block element
+  html = html.replace(/([^>])\n\n/g, '$1</p><p>');
+  
+  // Single newlines become <br> only within text (not after block elements)
+  html = html.replace(/([^>])\n([^<])/g, '$1<br>$2');
+  
+  // Wrap in paragraphs if not already wrapped and contains text
+  if (!html.startsWith('<') && html.trim()) {
+    html = '<p>' + html + '</p>';
+  }
+  
+  // Clean up any empty paragraphs
+  html = html.replace(/<p><\/p>/g, '');
+  html = html.replace(/<p><br><\/p>/g, '');
   
   return html;
 }
