@@ -13,27 +13,27 @@ const GLOBAL_INSTRUCTIONS = `CRITICAL INSTRUCTIONS:
 // Default actions
 const DEFAULT_ACTIONS = [
   // Quick Actions (Create mode)
-  { id: 'summarize', label: 'Summarize', prompt_template: 'Summarize the following text concisely.', mode: 'create', category: 'quick' },
-  { id: 'explain', label: 'Explain', prompt_template: 'Explain the following text in simple terms.', mode: 'create', category: 'quick' },
+  { id: 'summarize', label: 'Summarize', prompt_template: 'Summarize the following text concisely.\n\n{{text}}', mode: 'create', category: 'quick' },
+  { id: 'explain', label: 'Explain', prompt_template: 'Explain the following text in simple terms.\n\n{{text}}', mode: 'create', category: 'quick' },
   
   // Rewrite Actions
-  { id: 'paraphrase', label: 'Paraphrase', prompt_template: 'Paraphrase the following text using different words while keeping the same meaning.', mode: 'rewrite', category: 'rewrite' },
-  { id: 'improve', label: 'Improve', prompt_template: 'Improve the following text by fixing grammar, clarity, and flow.', mode: 'rewrite', category: 'rewrite' },
+  { id: 'paraphrase', label: 'Paraphrase', prompt_template: 'Paraphrase the following text using different words while keeping the same meaning.\n\n{{text}}', mode: 'rewrite', category: 'rewrite' },
+  { id: 'improve', label: 'Improve', prompt_template: 'Improve the following text by fixing grammar, clarity, and flow.\n\n{{text}}', mode: 'rewrite', category: 'rewrite' },
   
   // Change Tone
-  { id: 'tone-academic', label: 'Academic', prompt_template: 'Rewrite the following text in an academic tone.', mode: 'rewrite', category: 'tone' },
-  { id: 'tone-professional', label: 'Professional', prompt_template: 'Rewrite the following text in a professional tone.', mode: 'rewrite', category: 'tone' },
-  { id: 'tone-persuasive', label: 'Persuasive', prompt_template: 'Rewrite the following text to be more persuasive and compelling.', mode: 'rewrite', category: 'tone' },
-  { id: 'tone-casual', label: 'Casual', prompt_template: 'Rewrite the following text in a casual, conversational tone.', mode: 'rewrite', category: 'tone' },
-  { id: 'tone-funny', label: 'Funny', prompt_template: 'Rewrite the following text to be humorous and entertaining.', mode: 'rewrite', category: 'tone' },
+  { id: 'tone-academic', label: 'Academic', prompt_template: 'Rewrite the following text in an academic tone.\n\n{{text}}', mode: 'rewrite', category: 'tone' },
+  { id: 'tone-professional', label: 'Professional', prompt_template: 'Rewrite the following text in a professional tone.\n\n{{text}}', mode: 'rewrite', category: 'tone' },
+  { id: 'tone-persuasive', label: 'Persuasive', prompt_template: 'Rewrite the following text to be more persuasive and compelling.\n\n{{text}}', mode: 'rewrite', category: 'tone' },
+  { id: 'tone-casual', label: 'Casual', prompt_template: 'Rewrite the following text in a casual, conversational tone.\n\n{{text}}', mode: 'rewrite', category: 'tone' },
+  { id: 'tone-funny', label: 'Funny', prompt_template: 'Rewrite the following text to be humorous and entertaining.\n\n{{text}}', mode: 'rewrite', category: 'tone' },
   
   // Change Length
-  { id: 'length-shorter', label: 'Make shorter', prompt_template: 'Rewrite the following text to be more concise and shorter.', mode: 'rewrite', category: 'length' },
-  { id: 'length-longer', label: 'Make longer', prompt_template: 'Expand the following text with more detail and depth.', mode: 'rewrite', category: 'length' },
+  { id: 'length-shorter', label: 'Make shorter', prompt_template: 'Rewrite the following text to be more concise and shorter.\n\n{{text}}', mode: 'rewrite', category: 'length' },
+  { id: 'length-longer', label: 'Make longer', prompt_template: 'Expand the following text with more detail and depth.\n\n{{text}}', mode: 'rewrite', category: 'length' },
   
   // Create Actions
-  { id: 'tagline', label: 'Tagline', prompt_template: 'Generate a catchy tagline based on the following text.', mode: 'create', category: 'create' },
-  { id: 'social-media', label: 'Social media post', prompt_template: 'Create a social media post based on the following text.', mode: 'create', category: 'create' }
+  { id: 'tagline', label: 'Tagline', prompt_template: 'Generate a catchy tagline based on the following text.\n\n{{text}}', mode: 'create', category: 'create' },
+  { id: 'social-media', label: 'Social media post', prompt_template: 'Create a social media post based on the following text.\n\n{{text}}', mode: 'create', category: 'create' }
 ];
 
 // Default profile
