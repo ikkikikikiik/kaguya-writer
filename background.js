@@ -207,59 +207,100 @@ async function getActiveProfile() {
   return DEFAULT_PROFILE;
 }
 
-// Handle context menu clicks
-chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+// Pending action for when side panel opens
+let pendingAction = null;
+
+// Execute pending action
+async function executePendingAction() {
+  if (!pendingAction) return;
+  
+  const { profile, prompt } = pendingAction;
+  pendingAction = null;
+  
+  try {
+    await streamToSidePanel(profile, prompt);
+  } catch (error) {
+    console.error('[Kaguya Writer] Pending action error:', error);
+    await sendToSidePanel({
+      type: 'STREAM_ERROR',
+      error: error.message
+    });
+  }
+}
+
+// Handle context menu clicks - Must open side panel IMMEDIATELY (synchronously)
+chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId === 'kaguya-writer' || !info.selectionText) {
     return;
   }
   
-  try {
-    // Get action details
-    const result = await chrome.storage.local.get(['actions']);
-    const actions = result.actions || DEFAULT_ACTIONS;
-    const profile = await getActiveProfile();
-    
-    const action = actions.find(a => a.id === info.menuItemId);
-    if (!action) {
-      console.error('[Kaguya Writer] Action not found');
-      return;
-    }
-    
-    // Check API key
-    if (!profile || !profile.apiKey) {
+  // For create mode, we need to handle this carefully due to Chrome's user gesture requirement
+  // We open the side panel synchronously, then do async work
+  handleMenuClick(info, tab).catch(error => {
+    console.error('[Kaguya Writer] Menu click error:', error);
+  });
+});
+
+async function handleMenuClick(info, tab) {
+  // Get action details first to know what mode we're in
+  const result = await chrome.storage.local.get(['actions']);
+  const actions = result.actions || DEFAULT_ACTIONS;
+  const profile = await getActiveProfile();
+  
+  const action = actions.find(a => a.id === info.menuItemId);
+  if (!action) {
+    console.error('[Kaguya Writer] Action not found');
+    return;
+  }
+  
+  // Check API key first (before trying to open side panel)
+  if (!profile || !profile.apiKey) {
+    // Open side panel to show error
+    try {
       await chrome.sidePanel.open({ windowId: tab.windowId });
-      // Wait a bit for side panel to load
-      await new Promise(r => setTimeout(r, 500));
       sidePanelOpen = true;
+      await new Promise(r => setTimeout(r, 300));
       await sendToSidePanel({
         type: 'STREAM_ERROR',
-        error: 'Please configure your API key in the side panel settings'
+        error: 'Please configure your API key in the Settings tab'
+      });
+    } catch (e) {
+      console.error('[Kaguya Writer] Cannot open side panel for error:', e);
+    }
+    return;
+  }
+  
+  // Build prompt
+  const prompt = action.prompt_template.replace(/\{\{text\}\}/g, info.selectionText);
+  
+  // Execute based on mode
+  if (action.mode === 'create') {
+    // Open side panel and stream result
+    try {
+      await chrome.sidePanel.open({ windowId: tab.windowId });
+      sidePanelOpen = true;
+    } catch (openError) {
+      console.error('[Kaguya Writer] Failed to open side panel:', openError);
+      // Try to show error in side panel if it's already open
+      await sendToSidePanel({
+        type: 'STREAM_ERROR',
+        error: 'Failed to open side panel. Please click the Kaguya Writer icon first.'
       });
       return;
     }
     
-    // Build prompt
-    const prompt = action.prompt_template.replace(/\{\{text\}\}/g, info.selectionText);
+    await streamToSidePanel(profile, prompt);
     
-    // Execute based on mode
-    if (action.mode === 'create') {
-      // Open side panel and stream result
-      await chrome.sidePanel.open({ windowId: tab.windowId });
-      // Wait for side panel to load
-      await new Promise(r => setTimeout(r, 300));
-      sidePanelOpen = true;
-      await streamToSidePanel(profile, prompt);
-    } else if (action.mode === 'rewrite') {
-      // Stream and replace text
-      await handleRewrite(profile, prompt, tab);
-    }
-  } catch (error) {
-    console.error('[Kaguya Writer] Menu click error:', error);
+  } else if (action.mode === 'rewrite') {
+    // Stream and replace text
+    await handleRewrite(profile, prompt, tab);
   }
-});
+}
 
 // Stream to side panel
 async function streamToSidePanel(profile, prompt) {
+  // Wait a moment for side panel to be ready
+  await new Promise(r => setTimeout(r, 100));
   await sendToSidePanel({ type: 'STREAM_START' });
   
   try {
