@@ -5,7 +5,8 @@ A Chrome extension providing a customizable AI toolkit via the browser context m
 ## Features
 
 - **Dynamic Action Studio**: Create custom AI actions that appear in your right-click context menu
-- **Bring Your Own Key**: Use your own API keys from OpenAI, Anthropic, Google Gemini, Groq, DeepSeek, or any OpenAI-compatible provider
+- **Multiple API Profiles**: Save and switch between different AI provider configurations
+- **Bring Your Own Key**: Use your own API keys from any OpenAI-compatible provider
 - **Two Modes**:
   - **Rewrite**: Replace selected text directly on the page
   - **Create**: Generate content in the side panel for copying/editing
@@ -36,7 +37,7 @@ A Chrome extension providing a customizable AI toolkit via the browser context m
 4. **Configure**:
    - Click the Kaguya Writer icon in your toolbar to open the side panel
    - Go to **Settings** tab
-   - Select your AI provider and enter your API key
+   - Enter your API URL, key, and model
    - The extension comes with 5 default actions - customize them in the **Action Studio** tab
 
 ## Usage
@@ -59,17 +60,29 @@ A Chrome extension providing a customizable AI toolkit via the browser context m
 
 > **Note:** All default prompts use strict "CRITICAL INSTRUCTIONS" to prevent AI from adding introductions, multiple versions, explanations, or questions. The output should be **only** the converted text.
 
-## Supported Providers
+## API Profiles
 
-| Provider | Endpoint | Notes |
-|----------|----------|-------|
-| OpenAI | `api.openai.com` | |
-| Anthropic | `api.anthropic.com` | |
-| Google Gemini | `generativelanguage.googleapis.com` | |
-| Groq | `api.groq.com` | |
-| DeepSeek | `api.deepseek.com` | |
-| **Kimi** | `api.moonshot.cn` or `api.kimi.moonshot.cn` | Choose between Moonshot API or Kimi Code API |
-| Custom | Any OpenAI-compatible endpoint | |
+You can save multiple API configurations and switch between them:
+
+- **Profile Selector**: Dropdown to choose your active profile
+- **New Profile**: Create additional profiles for different providers
+- **Save Profile**: Update the current profile with new settings
+- **Delete Profile**: Remove profiles you no longer need
+
+### Common API Endpoints
+
+| Provider | API URL |
+|----------|---------|
+| OpenAI | `https://api.openai.com/v1/chat/completions` |
+| Anthropic | `https://api.anthropic.com/v1/messages` |
+| Groq | `https://api.groq.com/openai/v1/chat/completions` |
+| DeepSeek | `https://api.deepseek.com/chat/completions` |
+| Moonshot | `https://api.moonshot.ai/v1/chat/completions` |
+| Kimi Code | `https://api.kimi.com/coding/v1/chat/completions` |
+| LM Studio (local) | `http://localhost:1234/v1/chat/completions` |
+| Ollama (local) | `http://localhost:11434/v1/chat/completions` |
+
+> **Note:** The extension works with any OpenAI-compatible endpoint. Simply enter the URL, your API key, and the model name.
 
 ## Creating Custom Actions
 
@@ -135,7 +148,7 @@ Source material:
 
 ## Privacy & Security
 
-- **Local Storage Only**: Your API key and settings are stored locally in your browser
+- **Local Storage Only**: Your API keys and profiles are stored locally in your browser
 - **No Data Collection**: The extension only communicates with your chosen AI provider
 - **BYOK**: You use your own API key - the extension has no backend servers
 
@@ -146,14 +159,9 @@ Source material:
 - Try clicking directly in the text field before using an action.
 
 ### API errors?
-- Verify your API key is correct in Settings
-- Check that your chosen model is available for your account
-- For custom providers, ensure the URL ends with `/chat/completions`
-
-### Kimi/Moonshot specific issues?
-- **Moonshot API** (`api.moonshot.ai`): Use models like `moonshot-v1-8k`, `moonshot-v1-32k`, `moonshot-v1-128k`
-- **Kimi Code API** (`api.kimi.com`): Use model `kimi-code` for optimized code generation
-- Get your API key from [platform.moonshot.cn](https://platform.moonshot.cn) or the international portal
+- Verify your API URL is correct (should end with `/chat/completions` for OpenAI-compatible providers)
+- Check that your API key is valid
+- Verify the model name is correct for your provider
 
 ### Extension not showing in context menu?
 - Make sure you've selected text on the page
@@ -191,7 +199,7 @@ kaguya-writer/
 - **Background Service Worker**: Manages context menu lifecycle, handles API streaming
 - **Content Script**: Handles DOM text selection and replacement
 - **Side Panel**: Configuration UI and output display
-- **Storage**: `chrome.storage.local` for settings and actions
+- **Storage**: `chrome.storage.local` for profiles and actions
 
 ## License
 

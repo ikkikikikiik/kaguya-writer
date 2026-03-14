@@ -24,19 +24,29 @@
     <!-- Settings Tab -->
     <section id="settings" class="tab-content active">
       <div class="card">
-        <h2>API Configuration</h2>
+        <h2>API Profiles</h2>
         
+        <!-- Profile Selector -->
         <div class="form-group">
-          <label for="provider">Provider</label>
-          <select id="provider">
-            <option value="openai">OpenAI</option>
-            <option value="anthropic">Anthropic</option>
-            <option value="gemini">Google Gemini</option>
-            <option value="groq">Groq</option>
-            <option value="deepseek">DeepSeek</option>
-            <option value="kimi">Kimi (Moonshot AI)</option>
-            <option value="custom">Custom (OpenAI-compatible)</option>
-          </select>
+          <label for="profileSelect">Active Profile</label>
+          <div class="profile-selector">
+            <select id="profileSelect">
+              <option value="">Loading profiles...</option>
+            </select>
+            <button id="deleteProfile" class="btn btn-small btn-danger" title="Delete profile">✕</button>
+          </div>
+        </div>
+
+        <!-- Profile Form -->
+        <div class="form-group">
+          <label for="profileName">Profile Name</label>
+          <input type="text" id="profileName" placeholder="e.g., OpenAI, Groq, My Local LLM">
+        </div>
+
+        <div class="form-group">
+          <label for="apiUrl">API URL</label>
+          <input type="text" id="apiUrl" placeholder="https://api.openai.com/v1/chat/completions">
+          <small class="hint">Any OpenAI-compatible endpoint</small>
         </div>
 
         <div class="form-group">
@@ -45,28 +55,36 @@
           <small class="hint">Your key is stored locally and never shared.</small>
         </div>
 
-        <div class="form-group" id="kimiApiTypeGroup" style="display: none;">
-          <label for="kimiApiType">Kimi API Type</label>
-          <select id="kimiApiType">
-            <option value="moonshot">Moonshot API</option>
-            <option value="kimi-code">Kimi Code API</option>
-          </select>
-          <small class="hint">Moonshot API is for general use, Kimi Code API is optimized for coding tasks</small>
-        </div>
-
-        <div class="form-group" id="customUrlGroup" style="display: none;">
-          <label for="customUrl">Custom API URL</label>
-          <input type="text" id="customUrl" placeholder="https://api.example.com/v1/chat/completions">
-        </div>
-
         <div class="form-group">
           <label for="model">Model</label>
-          <input type="text" id="model" placeholder="e.g., gpt-4o, claude-3-opus">
-          <small class="hint" id="modelHint">Default: gpt-4o</small>
+          <input type="text" id="model" placeholder="e.g., gpt-4o, llama-3.1-70b">
+          <small class="hint">Model name as required by your provider</small>
         </div>
 
-        <button id="saveSettings" class="btn btn-primary">Save Settings</button>
+        <div class="button-group">
+          <button id="saveProfile" class="btn btn-primary">Save Profile</button>
+          <button id="newProfile" class="btn btn-secondary">New Profile</button>
+        </div>
         <div id="settingsStatus" class="status"></div>
+      </div>
+
+      <div class="card">
+        <h3>Quick Reference</h3>
+        <div class="provider-hints">
+          <details>
+            <summary>Common API Endpoints</summary>
+            <ul class="hint-list">
+              <li><strong>OpenAI:</strong> https://api.openai.com/v1/chat/completions</li>
+              <li><strong>Anthropic:</strong> https://api.anthropic.com/v1/messages</li>
+              <li><strong>Groq:</strong> https://api.groq.com/openai/v1/chat/completions</li>
+              <li><strong>DeepSeek:</strong> https://api.deepseek.com/chat/completions</li>
+              <li><strong>Moonshot:</strong> https://api.moonshot.ai/v1/chat/completions</li>
+              <li><strong>Kimi Code:</strong> https://api.kimi.com/coding/v1/chat/completions</li>
+              <li><strong>Local (LM Studio):</strong> http://localhost:1234/v1/chat/completions</li>
+              <li><strong>Local (Ollama):</strong> http://localhost:11434/v1/chat/completions</li>
+            </ul>
+          </details>
+        </div>
       </div>
     </section>
 

@@ -12,13 +12,6 @@
     "activeTab"
   ],
   "host_permissions": [
-    "https://api.openai.com/*",
-    "https://api.anthropic.com/*",
-    "https://generativelanguage.googleapis.com/*",
-    "https://api.groq.com/*",
-    "https://api.deepseek.com/*",
-    "https://api.moonshot.ai/*",
-    "https://api.kimi.com/*",
     "http://localhost/*",
     "https://*/*"
   ],

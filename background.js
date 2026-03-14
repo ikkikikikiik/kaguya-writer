@@ -34,18 +34,13 @@ const DEFAULT_ACTIONS = [
   }
 ];
 
-// Provider API endpoints
-const PROVIDER_ENDPOINTS = {
-  openai: 'https://api.openai.com/v1/chat/completions',
-  anthropic: 'https://api.anthropic.com/v1/messages',
-  gemini: 'https://generativelanguage.googleapis.com/v1beta/models',
-  groq: 'https://api.groq.com/openai/v1/chat/completions',
-  deepseek: 'https://api.deepseek.com/chat/completions',
-  kimi: {
-    moonshot: 'https://api.moonshot.ai/v1/chat/completions',
-    'kimi-code': 'https://api.kimi.com/coding/v1/chat/completions'
-  },
-  custom: ''
+// Default profile
+const DEFAULT_PROFILE = {
+  id: 'default',
+  name: 'OpenAI',
+  apiUrl: 'https://api.openai.com/v1/chat/completions',
+  apiKey: '',
+  model: 'gpt-4o'
 };
 
 // Track side panel status
@@ -66,23 +61,56 @@ chrome.runtime.onStartup.addListener(async () => {
 
 // Initialize storage with defaults
 async function initializeStorage() {
-  const result = await chrome.storage.local.get(['actions', 'settings']);
+  const result = await chrome.storage.local.get(['profiles', 'actions', 'settings']);
   
   if (!result.actions) {
     await chrome.storage.local.set({ actions: DEFAULT_ACTIONS });
   }
   
-  if (!result.settings) {
+  // Initialize profiles if not exists
+  if (!result.profiles || result.profiles.length === 0) {
+    const defaultProfile = { ...DEFAULT_PROFILE, id: 'profile-' + Date.now() };
+    await chrome.storage.local.set({ 
+      profiles: [defaultProfile],
+      activeProfileId: defaultProfile.id,
+      settings: defaultProfile  // For backward compatibility
+    });
+  } else if (result.settings && !result.profiles) {
+    // Migrate old settings to new profile format
+    const migratedProfile = {
+      id: 'profile-' + Date.now(),
+      name: 'Migrated Profile',
+      apiUrl: result.settings.customUrl || getProviderUrl(result.settings),
+      apiKey: result.settings.apiKey || '',
+      model: result.settings.model || 'gpt-4o'
+    };
     await chrome.storage.local.set({
-      settings: {
-        provider: 'openai',
-        apiKey: '',
-        model: 'gpt-4o',
-        customUrl: '',
-        kimiApiType: 'moonshot'
-      }
+      profiles: [migratedProfile],
+      activeProfileId: migratedProfile.id,
+      settings: migratedProfile
     });
   }
+}
+
+// Get provider URL from old settings format
+function getProviderUrl(settings) {
+  const { provider, customUrl, kimiApiType } = settings || {};
+  
+  const providerUrls = {
+    openai: 'https://api.openai.com/v1/chat/completions',
+    anthropic: 'https://api.anthropic.com/v1/messages',
+    gemini: 'https://generativelanguage.googleapis.com/v1beta/models',
+    groq: 'https://api.groq.com/openai/v1/chat/completions',
+    deepseek: 'https://api.deepseek.com/chat/completions',
+    kimi: {
+      moonshot: 'https://api.moonshot.ai/v1/chat/completions',
+      'kimi-code': 'https://api.kimi.com/coding/v1/chat/completions'
+    }
+  };
+  
+  if (provider === 'custom') return customUrl;
+  if (provider === 'kimi') return providerUrls.kimi[kimiApiType] || providerUrls.kimi.moonshot;
+  return providerUrls[provider] || providerUrls.openai;
 }
 
 // Listen for storage changes
@@ -162,6 +190,23 @@ async function sendToSidePanel(message) {
   }
 }
 
+// Get active profile from storage
+async function getActiveProfile() {
+  const result = await chrome.storage.local.get(['profiles', 'activeProfileId', 'settings']);
+  
+  if (result.profiles && result.profiles.length > 0) {
+    const activeId = result.activeProfileId || result.profiles[0].id;
+    return result.profiles.find(p => p.id === activeId) || result.profiles[0];
+  }
+  
+  // Fallback to settings (backward compatibility)
+  if (result.settings && result.settings.apiUrl) {
+    return result.settings;
+  }
+  
+  return DEFAULT_PROFILE;
+}
+
 // Handle context menu clicks
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (info.menuItemId === 'kaguya-writer' || !info.selectionText) {
@@ -170,9 +215,9 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   
   try {
     // Get action details
-    const result = await chrome.storage.local.get(['actions', 'settings']);
+    const result = await chrome.storage.local.get(['actions']);
     const actions = result.actions || DEFAULT_ACTIONS;
-    const settings = result.settings;
+    const profile = await getActiveProfile();
     
     const action = actions.find(a => a.id === info.menuItemId);
     if (!action) {
@@ -180,15 +225,8 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
       return;
     }
     
-    // Check settings exist
-    if (!settings) {
-      console.error('[Kaguya Writer] Settings not found');
-      await chrome.sidePanel.open({ windowId: tab.windowId });
-      return;
-    }
-    
     // Check API key
-    if (!settings.apiKey) {
+    if (!profile || !profile.apiKey) {
       await chrome.sidePanel.open({ windowId: tab.windowId });
       // Wait a bit for side panel to load
       await new Promise(r => setTimeout(r, 500));
@@ -210,10 +248,10 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
       // Wait for side panel to load
       await new Promise(r => setTimeout(r, 300));
       sidePanelOpen = true;
-      await streamToSidePanel(settings, prompt);
+      await streamToSidePanel(profile, prompt);
     } else if (action.mode === 'rewrite') {
       // Stream and replace text
-      await handleRewrite(settings, prompt, tab);
+      await handleRewrite(profile, prompt, tab);
     }
   } catch (error) {
     console.error('[Kaguya Writer] Menu click error:', error);
@@ -221,11 +259,11 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 });
 
 // Stream to side panel
-async function streamToSidePanel(settings, prompt) {
+async function streamToSidePanel(profile, prompt) {
   await sendToSidePanel({ type: 'STREAM_START' });
   
   try {
-    const stream = await makeAIRequest(settings, prompt);
+    const stream = await makeAIRequest(profile, prompt);
     let fullText = '';
     
     for await (const chunk of stream) {
@@ -247,7 +285,7 @@ async function streamToSidePanel(settings, prompt) {
 }
 
 // Handle rewrite mode
-async function handleRewrite(settings, prompt, tab) {
+async function handleRewrite(profile, prompt, tab) {
   // Notify content script that generation is starting
   try {
     await chrome.tabs.sendMessage(tab.id, { type: 'GENERATING_START' });
@@ -269,7 +307,7 @@ async function handleRewrite(settings, prompt, tab) {
   await sendToSidePanel({ type: 'STREAM_START' });
   
   try {
-    const stream = await makeAIRequest(settings, prompt);
+    const stream = await makeAIRequest(profile, prompt);
     let fullText = '';
     
     for await (const chunk of stream) {
@@ -335,23 +373,30 @@ async function handleRewrite(settings, prompt, tab) {
 }
 
 // Make AI request with streaming
-async function* makeAIRequest(settings, prompt) {
-  const { provider, apiKey, model, customUrl, kimiApiType } = settings || {};
+async function* makeAIRequest(profile, prompt) {
+  const { apiUrl, apiKey, model } = profile || {};
   
   if (!apiKey) {
     throw new Error('API key not configured');
   }
   
-  let endpoint;
+  if (!apiUrl) {
+    throw new Error('API URL not configured');
+  }
+  
+  // Detect provider from URL for special handling
+  const isAnthropic = apiUrl.includes('anthropic');
+  const isGemini = apiUrl.includes('googleapis') || apiUrl.includes('generativelanguage');
+  
+  let endpoint = apiUrl;
   let requestBody;
   let headers = {
     'Authorization': `Bearer ${apiKey}`,
     'Content-Type': 'application/json'
   };
   
-  // Handle different providers
-  if (provider === 'anthropic') {
-    endpoint = PROVIDER_ENDPOINTS.anthropic;
+  if (isAnthropic) {
+    // Anthropic format
     headers['x-api-key'] = apiKey;
     headers['anthropic-version'] = '2023-06-01';
     delete headers['Authorization'];
@@ -362,29 +407,17 @@ async function* makeAIRequest(settings, prompt) {
       messages: [{ role: 'user', content: prompt }],
       stream: true
     };
-  } else if (provider === 'gemini') {
-    // Gemini doesn't use standard OpenAI format
+  } else if (isGemini) {
+    // Gemini format
     const modelName = model || 'gemini-1.5-pro';
-    endpoint = `${PROVIDER_ENDPOINTS.gemini}/${modelName}:streamGenerateContent?key=${apiKey}`;
+    endpoint = `${apiUrl}/${modelName}:streamGenerateContent?key=${apiKey}`;
     delete headers['Authorization'];
     
     requestBody = {
       contents: [{ parts: [{ text: prompt }] }]
     };
-  } else if (provider === 'kimi') {
-    // Kimi API - uses OpenAI-compatible format
-    const apiType = kimiApiType || 'moonshot';
-    endpoint = PROVIDER_ENDPOINTS.kimi[apiType] || PROVIDER_ENDPOINTS.kimi.moonshot;
-    
-    requestBody = {
-      model: model || 'moonshot-v1-8k',
-      messages: [{ role: 'user', content: prompt }],
-      stream: true
-    };
   } else {
-    // OpenAI-compatible format
-    endpoint = provider === 'custom' ? customUrl : PROVIDER_ENDPOINTS[provider] || PROVIDER_ENDPOINTS.openai;
-    
+    // OpenAI-compatible format (default)
     requestBody = {
       model: model || 'gpt-4o',
       messages: [{ role: 'user', content: prompt }],
@@ -420,13 +453,13 @@ async function* makeAIRequest(settings, prompt) {
       try {
         let text = '';
         
-        if (provider === 'gemini') {
+        if (isGemini) {
           // Gemini format
           const data = JSON.parse(line);
           if (data.candidates && data.candidates[0]?.content?.parts) {
             text = data.candidates[0].content.parts.map(p => p.text).join('');
           }
-        } else if (provider === 'anthropic') {
+        } else if (isAnthropic) {
           // Anthropic SSE format
           if (line.startsWith('data: ')) {
             const data = JSON.parse(line.slice(6));

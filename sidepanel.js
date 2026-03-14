@@ -1,5 +1,14 @@
 // Kaguya Writer - Side Panel JavaScript
 
+// Default profile
+const DEFAULT_PROFILE = {
+  id: 'default',
+  name: 'OpenAI',
+  apiUrl: 'https://api.openai.com/v1/chat/completions',
+  apiKey: '',
+  model: 'gpt-4o'
+};
+
 // Default actions
 const DEFAULT_ACTIONS = [
   {
@@ -34,39 +43,21 @@ const DEFAULT_ACTIONS = [
   }
 ];
 
-// Provider default models
-const PROVIDER_MODELS = {
-  openai: 'gpt-4o',
-  anthropic: 'claude-3-opus-20240229',
-  gemini: 'gemini-1.5-pro',
-  groq: 'llama-3.1-70b-versatile',
-  deepseek: 'deepseek-chat',
-  kimi: 'moonshot-v1-8k',
-  custom: ''
-};
-
-// Kimi API endpoints (international)
-const KIMI_ENDPOINTS = {
-  moonshot: 'https://api.moonshot.ai/v1/chat/completions',
-  'kimi-code': 'https://api.kimi.com/coding/v1/chat/completions'
-};
-
 // DOM Elements
 const elements = {
   // Tabs
   tabBtns: document.querySelectorAll('.tab-btn'),
   tabContents: document.querySelectorAll('.tab-content'),
   
-  // Settings
-  provider: document.getElementById('provider'),
+  // Profile Management
+  profileSelect: document.getElementById('profileSelect'),
+  deleteProfile: document.getElementById('deleteProfile'),
+  profileName: document.getElementById('profileName'),
+  apiUrl: document.getElementById('apiUrl'),
   apiKey: document.getElementById('apiKey'),
-  customUrl: document.getElementById('customUrl'),
-  customUrlGroup: document.getElementById('customUrlGroup'),
-  kimiApiType: document.getElementById('kimiApiType'),
-  kimiApiTypeGroup: document.getElementById('kimiApiTypeGroup'),
   model: document.getElementById('model'),
-  modelHint: document.getElementById('modelHint'),
-  saveSettings: document.getElementById('saveSettings'),
+  saveProfile: document.getElementById('saveProfile'),
+  newProfile: document.getElementById('newProfile'),
   settingsStatus: document.getElementById('settingsStatus'),
   
   // Actions
@@ -85,13 +76,14 @@ const elements = {
 };
 
 // State
-let currentSettings = {};
+let profiles = [];
+let activeProfileId = null;
 let currentActions = [];
 
 // Initialize
 async function init() {
   setupEventListeners();
-  await loadSettings();
+  await loadProfiles();
   await loadActions();
   setupMessageListener();
   
@@ -115,19 +107,14 @@ function setupEventListeners() {
     btn.addEventListener('click', () => switchTab(btn.dataset.tab));
   });
   
-  // Provider change
-  elements.provider.addEventListener('change', handleProviderChange);
+  // Profile management
+  elements.profileSelect.addEventListener('change', handleProfileSelect);
+  elements.saveProfile.addEventListener('click', saveProfile);
+  elements.newProfile.addEventListener('click', createNewProfile);
+  elements.deleteProfile.addEventListener('click', deleteCurrentProfile);
   
-  // Kimi API type change
-  elements.kimiApiType.addEventListener('change', handleKimiApiTypeChange);
-  
-  // Save settings
-  elements.saveSettings.addEventListener('click', saveSettings);
-  
-  // Add action
+  // Actions
   elements.addAction.addEventListener('click', addAction);
-  
-  // Reset actions
   elements.resetActions.addEventListener('click', resetActions);
   
   // Output buttons
@@ -145,101 +132,130 @@ function switchTab(tabId) {
   });
 }
 
-// Handle provider change
-function handleProviderChange() {
-  const provider = elements.provider.value;
+// Load profiles from storage
+async function loadProfiles() {
+  const result = await chrome.storage.local.get(['profiles', 'activeProfileId']);
   
-  // Show/hide custom URL
-  elements.customUrlGroup.style.display = provider === 'custom' ? 'block' : 'none';
-  
-  // Show/hide Kimi API type selector
-  elements.kimiApiTypeGroup.style.display = provider === 'kimi' ? 'block' : 'none';
-  
-  // Update model hint and default
-  elements.model.placeholder = PROVIDER_MODELS[provider] || 'Enter model name';
-  elements.modelHint.textContent = `Default: ${PROVIDER_MODELS[provider] || 'See provider docs'}`;
-  
-  // Set default model if empty
-  if (!elements.model.value) {
-    elements.model.value = PROVIDER_MODELS[provider] || '';
-  }
-  
-  // Update model options for Kimi based on API type
-  if (provider === 'kimi') {
-    handleKimiApiTypeChange();
-  }
-}
-
-// Handle Kimi API type change
-function handleKimiApiTypeChange() {
-  const apiType = elements.kimiApiType.value;
-  
-  // Update default model and hint based on API type
-  if (apiType === 'kimi-code') {
-    elements.model.placeholder = 'kimi-code';
-    elements.modelHint.textContent = 'Kimi Code API: use kimi-code';
-    if (!elements.model.value || elements.model.value.startsWith('moonshot')) {
-      elements.model.value = 'kimi-code';
-    }
+  if (!result.profiles || result.profiles.length === 0) {
+    // Initialize with default profile
+    profiles = [{ ...DEFAULT_PROFILE, id: 'profile-' + Date.now() }];
+    activeProfileId = profiles[0].id;
+    await saveProfilesToStorage();
   } else {
-    elements.model.placeholder = 'moonshot-v1-8k';
-    elements.modelHint.textContent = 'Options: moonshot-v1-8k, moonshot-v1-32k, moonshot-v1-128k';
-    if (elements.model.value === 'kimi-code') {
-      elements.model.value = 'moonshot-v1-8k';
-    }
+    profiles = result.profiles;
+    activeProfileId = result.activeProfileId || profiles[0]?.id;
+  }
+  
+  renderProfileSelect();
+  loadActiveProfile();
+}
+
+// Save profiles to storage
+async function saveProfilesToStorage() {
+  await chrome.storage.local.set({ 
+    profiles, 
+    activeProfileId,
+    // Also save active profile as 'settings' for backward compatibility
+    settings: getActiveProfile() 
+  });
+}
+
+// Get active profile
+function getActiveProfile() {
+  return profiles.find(p => p.id === activeProfileId) || profiles[0];
+}
+
+// Render profile selector
+function renderProfileSelect() {
+  elements.profileSelect.innerHTML = profiles.map(p => 
+    `<option value="${p.id}" ${p.id === activeProfileId ? 'selected' : ''}>${escapeHtml(p.name)}</option>`
+  ).join('');
+}
+
+// Load active profile into form
+function loadActiveProfile() {
+  const profile = getActiveProfile();
+  if (profile) {
+    elements.profileName.value = profile.name;
+    elements.apiUrl.value = profile.apiUrl;
+    elements.apiKey.value = profile.apiKey;
+    elements.model.value = profile.model;
   }
 }
 
-// Load settings
-async function loadSettings() {
-  const result = await chrome.storage.local.get(['settings']);
-  currentSettings = result.settings || {};
-  
-  if (currentSettings.provider) {
-    elements.provider.value = currentSettings.provider;
-  }
-  if (currentSettings.apiKey) {
-    elements.apiKey.value = currentSettings.apiKey;
-  }
-  if (currentSettings.customUrl) {
-    elements.customUrl.value = currentSettings.customUrl;
-  }
-  if (currentSettings.kimiApiType) {
-    elements.kimiApiType.value = currentSettings.kimiApiType;
-  }
-  if (currentSettings.model) {
-    elements.model.value = currentSettings.model;
-  } else {
-    elements.model.value = PROVIDER_MODELS[elements.provider.value] || '';
-  }
-  
-  handleProviderChange();
+// Handle profile selection change
+function handleProfileSelect() {
+  activeProfileId = elements.profileSelect.value;
+  loadActiveProfile();
+  saveProfilesToStorage();
+  showStatus(elements.settingsStatus, 'Profile switched!', 'success');
 }
 
-// Save settings
-async function saveSettings() {
-  const settings = {
-    provider: elements.provider.value,
-    apiKey: elements.apiKey.value.trim(),
-    model: elements.model.value.trim() || PROVIDER_MODELS[elements.provider.value],
-    customUrl: elements.customUrl.value.trim(),
-    kimiApiType: elements.kimiApiType.value
-  };
+// Save current profile
+async function saveProfile() {
+  const name = elements.profileName.value.trim();
+  const apiUrl = elements.apiUrl.value.trim();
+  const apiKey = elements.apiKey.value.trim();
+  const model = elements.model.value.trim();
   
-  if (!settings.apiKey) {
-    showStatus(elements.settingsStatus, 'Please enter an API key', 'error');
+  if (!name || !apiUrl || !apiKey || !model) {
+    showStatus(elements.settingsStatus, 'Please fill in all fields', 'error');
     return;
   }
   
-  await chrome.storage.local.set({ settings });
-  currentSettings = settings;
+  const profile = getActiveProfile();
+  if (profile) {
+    profile.name = name;
+    profile.apiUrl = apiUrl;
+    profile.apiKey = apiKey;
+    profile.model = model;
+  }
   
-  showStatus(elements.settingsStatus, 'Settings saved!', 'success');
+  await saveProfilesToStorage();
+  renderProfileSelect();
+  showStatus(elements.settingsStatus, 'Profile saved!', 'success');
   
-  // Notify background script to refresh context menus
-  chrome.runtime.sendMessage({ type: 'REFRESH_MENUS' }).catch(() => {
-    // Background may be restarting, ignore
-  });
+  // Notify background
+  chrome.runtime.sendMessage({ type: 'REFRESH_MENUS' }).catch(() => {});
+}
+
+// Create new profile
+async function createNewProfile() {
+  const newProfile = {
+    id: 'profile-' + Date.now(),
+    name: 'New Profile',
+    apiUrl: 'https://api.openai.com/v1/chat/completions',
+    apiKey: '',
+    model: 'gpt-4o'
+  };
+  
+  profiles.push(newProfile);
+  activeProfileId = newProfile.id;
+  
+  await saveProfilesToStorage();
+  renderProfileSelect();
+  loadActiveProfile();
+  showStatus(elements.settingsStatus, 'New profile created!', 'success');
+}
+
+// Delete current profile
+async function deleteCurrentProfile() {
+  if (profiles.length <= 1) {
+    showStatus(elements.settingsStatus, 'Cannot delete the last profile', 'error');
+    return;
+  }
+  
+  if (!confirm('Delete this profile?')) {
+    return;
+  }
+  
+  profiles = profiles.filter(p => p.id !== activeProfileId);
+  activeProfileId = profiles[0].id;
+  
+  await saveProfilesToStorage();
+  renderProfileSelect();
+  loadActiveProfile();
+  showStatus(elements.settingsStatus, 'Profile deleted!', 'success');
 }
 
 // Load actions
@@ -311,7 +327,7 @@ async function addAction() {
   showStatus(elements.settingsStatus, 'Action added!', 'success');
   
   // Notify background script
-  chrome.runtime.sendMessage({ type: 'REFRESH_MENUS' });
+  chrome.runtime.sendMessage({ type: 'REFRESH_MENUS' }).catch(() => {});
 }
 
 // Delete action
@@ -321,7 +337,7 @@ async function deleteAction(id) {
   renderActionsList();
   
   // Notify background script
-  chrome.runtime.sendMessage({ type: 'REFRESH_MENUS' });
+  chrome.runtime.sendMessage({ type: 'REFRESH_MENUS' }).catch(() => {});
 }
 
 // Reset actions
@@ -336,7 +352,7 @@ async function resetActions() {
   showStatus(elements.settingsStatus, 'Actions reset to defaults', 'success');
   
   // Notify background script
-  chrome.runtime.sendMessage({ type: 'REFRESH_MENUS' });
+  chrome.runtime.sendMessage({ type: 'REFRESH_MENUS' }).catch(() => {});
 }
 
 // Copy output

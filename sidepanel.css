@@ -20,6 +20,69 @@
   --spacing-xl: 24px;
 }
 
+/* Profile Selector */
+.profile-selector {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.profile-selector select {
+  flex: 1;
+}
+
+.profile-selector .btn {
+  padding: var(--spacing-sm) var(--spacing-md);
+  min-width: 36px;
+}
+
+/* Button Group */
+.button-group {
+  display: flex;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-md);
+}
+
+.button-group .btn {
+  flex: 1;
+}
+
+/* Provider Hints */
+.provider-hints details {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  padding: var(--spacing-sm) var(--spacing-md);
+}
+
+.provider-hints summary {
+  color: var(--text-primary);
+  font-size: 12px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.provider-hints summary:hover {
+  color: var(--accent-primary);
+}
+
+.hint-list {
+  margin: var(--spacing-sm) 0 0 0;
+  padding-left: var(--spacing-lg);
+  list-style: none;
+}
+
+.hint-list li {
+  color: var(--text-secondary);
+  font-size: 11px;
+  margin-bottom: var(--spacing-xs);
+  font-family: 'SF Mono', Monaco, monospace;
+}
+
+.hint-list strong {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
 * {
   margin: 0;
   padding: 0;
