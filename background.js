@@ -248,7 +248,24 @@ async function streamToSidePanel(settings, prompt) {
 
 // Handle rewrite mode
 async function handleRewrite(settings, prompt, tab) {
-  // Try to notify side panel if open
+  // Notify content script that generation is starting
+  try {
+    await chrome.tabs.sendMessage(tab.id, { type: 'GENERATING_START' });
+  } catch (e) {
+    // Content script not ready, inject it
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: ['content.js']
+      });
+      await new Promise(r => setTimeout(r, 100));
+      await chrome.tabs.sendMessage(tab.id, { type: 'GENERATING_START' });
+    } catch (injectErr) {
+      console.warn('[Kaguya Writer] Could not show generating indicator:', injectErr);
+    }
+  }
+  
+  // Also notify side panel if open
   await sendToSidePanel({ type: 'STREAM_START' });
   
   try {
@@ -257,12 +274,20 @@ async function handleRewrite(settings, prompt, tab) {
     
     for await (const chunk of stream) {
       fullText += chunk;
+      
+      // Notify content script of progress
+      chrome.tabs.sendMessage(tab.id, { 
+        type: 'GENERATING_CHUNK' 
+      }).catch(() => {});
+      
       await sendToSidePanel({
         type: 'STREAM_CHUNK',
         chunk: chunk
       });
     }
     
+    // Notify content script generation is done
+    await chrome.tabs.sendMessage(tab.id, { type: 'GENERATING_END' }).catch(() => {});
     await sendToSidePanel({ type: 'STREAM_END' });
     
     // Send to content script for replacement
@@ -300,6 +325,8 @@ async function handleRewrite(settings, prompt, tab) {
     }
   } catch (error) {
     console.error('[Kaguya Writer] Rewrite error:', error);
+    // Notify content script of error
+    await chrome.tabs.sendMessage(tab.id, { type: 'GENERATING_END' }).catch(() => {});
     await sendToSidePanel({
       type: 'STREAM_ERROR',
       error: error.message

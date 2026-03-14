@@ -1,19 +1,35 @@
 // Kaguya Writer - Content Script
 
+// Track generating state
+let generatingToast = null;
+let generatingInterval = null;
+
 // Listen for messages from background script
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'REPLACE_TEXT') {
     handleTextReplacement(message.newText)
       .then(success => {
+        hideGeneratingToast();
         sendResponse({ success });
       })
       .catch(error => {
         console.error('[Kaguya Writer] Replacement error:', error);
+        hideGeneratingToast();
+        showToast('Error: ' + error.message, 'error');
         sendResponse({ success: false, error: error.message });
       });
     return true; // Keep channel open for async
   } else if (message.type === 'SHOW_TOAST') {
     showToast(message.message, 'info', message.duration || 3000);
+    sendResponse({ success: true });
+  } else if (message.type === 'GENERATING_START') {
+    showGeneratingToast();
+    sendResponse({ success: true });
+  } else if (message.type === 'GENERATING_CHUNK') {
+    updateGeneratingToast();
+    sendResponse({ success: true });
+  } else if (message.type === 'GENERATING_END') {
+    hideGeneratingToast();
     sendResponse({ success: true });
   }
 });
@@ -70,6 +86,115 @@ async function handleTextReplacement(newText) {
   } catch (e) {
     console.error('[Kaguya Writer] Clipboard fallback failed:', e);
     throw new Error('Could not replace text. Please try again.');
+  }
+}
+
+// Show generating toast with spinner
+function showGeneratingToast() {
+  // Remove existing toast first
+  hideGeneratingToast();
+  
+  const toast = document.createElement('div');
+  toast.id = 'kaguya-writer-generating';
+  
+  // Spinner + text
+  toast.innerHTML = `
+    <span class="kaguya-spinner"></span>
+    <span class="kaguya-text">Rewriting</span>
+  `;
+  
+  toast.style.cssText = `
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: #1a1a2e;
+    border: 1px solid #30363d;
+    color: #c9d1d9;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 14px;
+    z-index: 2147483647;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    animation: kaguya-toast-in 0.3s ease;
+  `;
+  
+  // Add spinner styles if not present
+  if (!document.getElementById('kaguya-writer-styles')) {
+    const style = document.createElement('style');
+    style.id = 'kaguya-writer-styles';
+    style.textContent = `
+      @keyframes kaguya-toast-in {
+        from { transform: translateY(100px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+      }
+      @keyframes kaguya-toast-out {
+        from { transform: translateY(0); opacity: 1; }
+        to { transform: translateY(100px); opacity: 0; }
+      }
+      @keyframes kaguya-spin {
+        to { transform: rotate(360deg); }
+      }
+      .kaguya-spinner {
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        border: 2px solid #30363d;
+        border-top-color: #58a6ff;
+        border-radius: 50%;
+        animation: kaguya-spin 0.8s linear infinite;
+      }
+      .kaguya-dots::after {
+        content: '';
+        animation: kaguya-dots 1.5s steps(4, end) infinite;
+      }
+      @keyframes kaguya-dots {
+        0% { content: ''; }
+        25% { content: '.'; }
+        50% { content: '..'; }
+        75% { content: '...'; }
+        100% { content: ''; }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+  
+  document.body.appendChild(toast);
+  generatingToast = toast;
+  
+  // Animate dots
+  const textEl = toast.querySelector('.kaguya-text');
+  let dots = 0;
+  generatingInterval = setInterval(() => {
+    dots = (dots + 1) % 4;
+    textEl.textContent = 'Rewriting' + '.'.repeat(dots);
+  }, 400);
+}
+
+// Update generating toast (optional progress indicator)
+function updateGeneratingToast() {
+  // Could be used to show progress if we had token counts
+  // For now, the animated dots show activity
+}
+
+// Hide generating toast
+function hideGeneratingToast() {
+  if (generatingInterval) {
+    clearInterval(generatingInterval);
+    generatingInterval = null;
+  }
+  
+  if (generatingToast) {
+    generatingToast.style.animation = 'kaguya-toast-out 0.3s ease forwards';
+    setTimeout(() => {
+      if (generatingToast) {
+        generatingToast.remove();
+        generatingToast = null;
+      }
+    }, 300);
   }
 }
 
@@ -205,23 +330,6 @@ function showToast(message, type = 'info', duration = 3000) {
     max-width: 300px;
     word-wrap: break-word;
   `;
-  
-  // Add animation styles if not present
-  if (!document.getElementById('kaguya-writer-styles')) {
-    const style = document.createElement('style');
-    style.id = 'kaguya-writer-styles';
-    style.textContent = `
-      @keyframes kaguya-toast-in {
-        from { transform: translateY(100px); opacity: 0; }
-        to { transform: translateY(0); opacity: 1; }
-      }
-      @keyframes kaguya-toast-out {
-        from { transform: translateY(0); opacity: 1; }
-        to { transform: translateY(100px); opacity: 0; }
-      }
-    `;
-    document.head.appendChild(style);
-  }
   
   document.body.appendChild(toast);
   
