@@ -16,13 +16,60 @@
 
     <!-- Tabs -->
     <nav class="tabs">
-      <button class="tab-btn active" data-tab="settings">Settings</button>
-      <button class="tab-btn" data-tab="actions">Action Studio</button>
-      <button class="tab-btn" data-tab="output">Output</button>
+      <button class="tab-btn active" data-tab="chat">Chat</button>
+      <button class="tab-btn" data-tab="settings">Settings</button>
+      <button class="tab-btn" data-tab="actions">Actions</button>
     </nav>
 
+    <!-- Chat Tab -->
+    <section id="chat" class="tab-content active">
+      <div class="chat-container">
+        <!-- Messages Area -->
+        <div id="chatMessages" class="chat-messages">
+          <div class="chat-welcome">
+            <div class="welcome-icon">🌙</div>
+            <h3>Welcome to Kaguya Writer</h3>
+            <p>Select text on any page and right-click to use actions, or start a conversation here.</p>
+          </div>
+        </div>
+        
+        <!-- Input Area -->
+        <div class="chat-input-area">
+          <div id="chatStatus" class="chat-status"></div>
+          <div class="chat-input-wrapper">
+            <textarea 
+              id="chatInput" 
+              class="chat-input" 
+              placeholder="Ask a follow up..."
+              rows="1"
+            ></textarea>
+            <button id="sendMessage" class="chat-send-btn" title="Send">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+              </svg>
+            </button>
+          </div>
+          <div class="chat-toolbar">
+            <button id="newChat" class="chat-tool-btn" title="New chat">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 5v14M5 12h14"/>
+              </svg>
+              New Chat
+            </button>
+            <button id="copyLastMessage" class="chat-tool-btn" title="Copy last message">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+              </svg>
+              Copy
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- Settings Tab -->
-    <section id="settings" class="tab-content active">
+    <section id="settings" class="tab-content">
       <div class="card">
         <h2>API Profiles</h2>
         
@@ -104,7 +151,7 @@
             <label for="actionMode">Mode</label>
             <select id="actionMode">
               <option value="rewrite">Rewrite (Replace selected text)</option>
-              <option value="create">Create (Open in panel)</option>
+              <option value="create">Create (Open in chat)</option>
             </select>
           </div>
 
@@ -129,19 +176,6 @@ Use {{text}} as a placeholder for the selected text."></textarea>
       <div class="card danger-zone">
         <h3>Reset</h3>
         <button id="resetActions" class="btn btn-danger">Reset to Default Actions</button>
-      </div>
-    </section>
-
-    <!-- Output Tab -->
-    <section id="output" class="tab-content">
-      <div class="card">
-        <h2>Output</h2>
-        <div class="output-toolbar">
-          <button id="copyOutput" class="btn btn-small">Copy</button>
-          <button id="clearOutput" class="btn btn-small btn-secondary">Clear</button>
-        </div>
-        <textarea id="outputArea" class="output-area" readonly placeholder="AI-generated content will appear here..."></textarea>
-        <div id="outputStatus" class="status"></div>
       </div>
     </section>
   </div>
