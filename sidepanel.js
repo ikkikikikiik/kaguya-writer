@@ -540,7 +540,9 @@ async function* makeChatRequest(profile, messages) {
   if (!apiUrl) throw new Error('API URL not configured');
   
   const isAnthropic = apiUrl.includes('anthropic');
-  const isGemini = apiUrl.includes('googleapis') || apiUrl.includes('generativelanguage');
+  // Check for new OpenAI-compatible Gemini endpoint first
+  const isGeminiOpenAI = apiUrl.includes('generativelanguage') && apiUrl.includes('/openai/');
+  const isGemini = (apiUrl.includes('googleapis') || apiUrl.includes('generativelanguage')) && !isGeminiOpenAI;
   
   let endpoint = apiUrl;
   let requestBody;
@@ -618,6 +620,7 @@ async function* makeChatRequest(profile, messages) {
         let text = '';
         
         if (isGemini) {
+          // Old Gemini API format
           const data = JSON.parse(line);
           if (data.candidates?.[0]?.content?.parts) {
             text = data.candidates[0].content.parts.map(p => p.text).join('');

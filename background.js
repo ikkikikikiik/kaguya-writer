@@ -476,7 +476,9 @@ async function* makeAIRequest(profile, prompt) {
   if (!apiUrl) throw new Error('API URL not configured');
   
   const isAnthropic = apiUrl.includes('anthropic');
-  const isGemini = apiUrl.includes('googleapis') || apiUrl.includes('generativelanguage');
+  // Check for new OpenAI-compatible Gemini endpoint first
+  const isGeminiOpenAI = apiUrl.includes('generativelanguage') && apiUrl.includes('/openai/');
+  const isGeminiOld = (apiUrl.includes('googleapis') || apiUrl.includes('generativelanguage')) && !isGeminiOpenAI;
   
   let endpoint = apiUrl;
   let requestBody;
@@ -496,13 +498,15 @@ async function* makeAIRequest(profile, prompt) {
       messages: [{ role: 'user', content: prompt }],
       stream: true
     };
-  } else if (isGemini) {
+  } else if (isGeminiOld) {
+    // Old Gemini API format
     const modelName = model || 'gemini-1.5-pro';
     endpoint = `${apiUrl}/${modelName}:streamGenerateContent?key=${apiKey}`;
     delete headers['Authorization'];
     
     requestBody = { contents: [{ parts: [{ text: prompt }] }] };
   } else {
+    // OpenAI-compatible format (includes Gemini OpenAI endpoint)
     requestBody = {
       model: model || 'gpt-4o',
       messages: [{ role: 'user', content: prompt }],
@@ -537,7 +541,8 @@ async function* makeAIRequest(profile, prompt) {
       try {
         let text = '';
         
-        if (isGemini) {
+        if (isGeminiOld) {
+          // Old Gemini API format
           const data = JSON.parse(line);
           if (data.candidates?.[0]?.content?.parts) {
             text = data.candidates[0].content.parts.map(p => p.text).join('');
@@ -550,6 +555,7 @@ async function* makeAIRequest(profile, prompt) {
             }
           }
         } else {
+          // OpenAI-compatible format (includes Gemini OpenAI endpoint)
           if (line.startsWith('data: ')) {
             const data = JSON.parse(line.slice(6));
             if (data.choices?.[0]?.delta?.content) {
