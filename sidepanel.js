@@ -9,37 +9,117 @@ const DEFAULT_PROFILE = {
   model: 'gpt-4o'
 };
 
-// Default actions
+// Global instructions applied to all actions automatically
+const GLOBAL_INSTRUCTIONS = `CRITICAL INSTRUCTIONS:
+- Output ONLY the result, with no introduction or explanation
+- NO "Here is" or "Here are" phrases
+- NO multiple versions - provide ONE result only
+- NO questions at the end
+- NO formatting markers like ** or > unless necessary for the output
+
+`;
+
+// Default actions organized by category
 const DEFAULT_ACTIONS = [
-  {
-    id: 'professional-polish',
-    label: 'Professional Polish',
-    prompt_template: 'Rewrite the following text to be more professional and polished.\n\nCRITICAL INSTRUCTIONS:\n- Output ONLY the rewritten text\n- NO introduction, NO headers, NO explanations\n- NO "Here is" or "Here are" phrases\n- NO multiple versions - provide ONE result only\n- NO questions at the end\n- NO formatting markers like ** or >\n\nText to rewrite:\n{{text}}',
-    mode: 'rewrite'
-  },
-  {
-    id: 'simplify',
-    label: 'Simplify',
-    prompt_template: 'Rewrite the following text to be simpler and easier to understand.\n\nCRITICAL INSTRUCTIONS:\n- Output ONLY the simplified text\n- NO introduction, NO headers, NO explanations\n- NO "Here is" or "Here are" phrases\n- NO multiple versions - provide ONE simple version only\n- NO breakdown of changes or translations\n- NO questions at the end\n- NO formatting markers like ** or >\n\nText to simplify:\n{{text}}',
-    mode: 'rewrite'
-  },
-  {
-    id: 'expand',
-    label: 'Expand',
-    prompt_template: 'Expand on the following text with more detail and context.\n\nCRITICAL INSTRUCTIONS:\n- Output ONLY the expanded text\n- NO introduction, NO headers, NO explanations\n- NO "Here is" or "Here are" phrases\n- NO "Expanded version:" labels\n- NO multiple versions - provide ONE result only\n- NO questions at the end\n- NO formatting markers like ** or > unless in the original\n\nText to expand:\n{{text}}',
-    mode: 'rewrite'
-  },
+  // Quick Actions (Create mode)
   {
     id: 'summarize',
     label: 'Summarize',
-    prompt_template: 'Summarize the following text concisely.\n\nCRITICAL INSTRUCTIONS:\n- Output ONLY the summary text\n- NO introduction, NO headers, NO explanations\n- NO "Summary:" or "Here is" phrases\n- NO bullet points unless the original used them\n- ONE paragraph only\n- NO questions at the end\n\nText to summarize:\n{{text}}',
-    mode: 'create'
+    prompt_template: 'Summarize the following text concisely.',
+    mode: 'create',
+    category: 'quick'
   },
   {
-    id: 'brainstorm',
-    label: 'Brainstorm Ideas',
-    prompt_template: 'Based on the following text, generate a list of related ideas and concepts.\n\nCRITICAL INSTRUCTIONS:\n- Output ONLY bullet points\n- NO introduction like "Here are some ideas"\n- NO explanations after bullet points\n- NO conclusion or summary paragraph\n- NO questions at the end\n- Just the bullet list, nothing else\n\nSource text:\n{{text}}',
-    mode: 'create'
+    id: 'explain',
+    label: 'Explain',
+    prompt_template: 'Explain the following text in simple terms.',
+    mode: 'create',
+    category: 'quick'
+  },
+  
+  // Rewrite Actions
+  {
+    id: 'paraphrase',
+    label: 'Paraphrase',
+    prompt_template: 'Paraphrase the following text using different words while keeping the same meaning.',
+    mode: 'rewrite',
+    category: 'rewrite'
+  },
+  {
+    id: 'improve',
+    label: 'Improve',
+    prompt_template: 'Improve the following text by fixing grammar, clarity, and flow.',
+    mode: 'rewrite',
+    category: 'rewrite'
+  },
+  
+  // Change Tone Submenu
+  {
+    id: 'tone-academic',
+    label: 'Academic',
+    prompt_template: 'Rewrite the following text in an academic tone.',
+    mode: 'rewrite',
+    category: 'tone'
+  },
+  {
+    id: 'tone-professional',
+    label: 'Professional',
+    prompt_template: 'Rewrite the following text in a professional tone.',
+    mode: 'rewrite',
+    category: 'tone'
+  },
+  {
+    id: 'tone-persuasive',
+    label: 'Persuasive',
+    prompt_template: 'Rewrite the following text to be more persuasive and compelling.',
+    mode: 'rewrite',
+    category: 'tone'
+  },
+  {
+    id: 'tone-casual',
+    label: 'Casual',
+    prompt_template: 'Rewrite the following text in a casual, conversational tone.',
+    mode: 'rewrite',
+    category: 'tone'
+  },
+  {
+    id: 'tone-funny',
+    label: 'Funny',
+    prompt_template: 'Rewrite the following text to be humorous and entertaining.',
+    mode: 'rewrite',
+    category: 'tone'
+  },
+  
+  // Change Length Submenu
+  {
+    id: 'length-shorter',
+    label: 'Make shorter',
+    prompt_template: 'Rewrite the following text to be more concise and shorter.',
+    mode: 'rewrite',
+    category: 'length'
+  },
+  {
+    id: 'length-longer',
+    label: 'Make longer',
+    prompt_template: 'Expand the following text with more detail and depth.',
+    mode: 'rewrite',
+    category: 'length'
+  },
+  
+  // Create Actions
+  {
+    id: 'tagline',
+    label: 'Tagline',
+    prompt_template: 'Generate a catchy tagline based on the following text.',
+    mode: 'create',
+    category: 'create'
+  },
+  {
+    id: 'social-media',
+    label: 'Social media post',
+    prompt_template: 'Create a social media post based on the following text.',
+    mode: 'create',
+    category: 'create'
   }
 ];
 
@@ -47,7 +127,7 @@ const DEFAULT_ACTIONS = [
 let conversation = {
   messages: [],
   isStreaming: false,
-  currentContext: null  // For storing page content or selected text context
+  currentContext: null
 };
 
 // DOM Elements
@@ -173,7 +253,7 @@ let messageIdCounter = 0;
 function addMessage(role, content, isStreaming = false) {
   const message = {
     id: `${Date.now()}-${++messageIdCounter}`,
-    role,  // 'user' or 'assistant'
+    role,
     content,
     isStreaming
   };
@@ -195,7 +275,7 @@ function updateMessage(messageId, newContent) {
   }
 }
 
-// Mark message as complete (remove streaming indicator)
+// Mark message as complete
 function completeMessage(messageId) {
   const message = conversation.messages.find(m => m.id === messageId);
   if (message) {
@@ -227,7 +307,6 @@ function renderChat() {
 
 // Render a single message
 function renderMessage(message) {
-  // If welcome message exists, remove it
   const welcome = elements.chatMessages.querySelector('.chat-welcome');
   if (welcome) welcome.remove();
   
@@ -255,23 +334,20 @@ function renderMessage(message) {
 
 // Parse Markdown tables
 function parseTables(html) {
-  // Match table blocks: lines starting with | and containing |
   const tableRegex = /(^|\n)((?:\|[^\n]*\|[\n]?)+)/g;
   
   return html.replace(tableRegex, (match, prefix, tableBlock) => {
     const lines = tableBlock.trim().split('\n').filter(line => line.trim());
     
-    if (lines.length < 2) return match; // Need at least header and separator
+    if (lines.length < 2) return match;
     
-    // Check if second line is separator (|---|)
     const separatorLine = lines[1];
     const isSeparator = /^\|[\s\-:|]+\|$/.test(separatorLine) || /^\|[\s\-:|]+\|/.test(separatorLine);
     
-    if (!isSeparator) return match; // Not a valid table
+    if (!isSeparator) return match;
     
     let tableHtml = '<table>';
     
-    // Parse header
     const headerCells = parseTableRow(lines[0]);
     tableHtml += '<thead><tr>';
     headerCells.forEach(cell => {
@@ -279,7 +355,6 @@ function parseTables(html) {
     });
     tableHtml += '</tr></thead>';
     
-    // Parse body (skip separator line)
     if (lines.length > 2) {
       tableHtml += '<tbody>';
       for (let i = 2; i < lines.length; i++) {
@@ -300,14 +375,10 @@ function parseTables(html) {
   });
 }
 
-// Parse a single table row into cells
 function parseTableRow(row) {
-  // Remove leading and trailing |
   let cleanRow = row.trim();
   if (cleanRow.startsWith('|')) cleanRow = cleanRow.slice(1);
   if (cleanRow.endsWith('|')) cleanRow = cleanRow.slice(0, -1);
-  
-  // Split by | and handle escaped pipes if any
   return cleanRow.split('|').map(cell => cell.trim());
 }
 
@@ -317,31 +388,20 @@ function formatMessageContent(content) {
   
   let html = content;
   
-  // Escape HTML first to prevent XSS
   html = html.replace(/&/g, '&amp;')
              .replace(/</g, '&lt;')
              .replace(/>/g, '&gt;');
   
-  // Code blocks (```code```)
   html = html.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
-  
-  // Inline code (`code`)
   html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
-  
-  // Headers (# ## ###)
   html = html.replace(/^#### (.*$)/gim, '<h4>$1</h4>');
   html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
   html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>');
   html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>');
-  
-  // Bold (**text**)
   html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-  
-  // Italic (*text* or _text_) - but not inside **
   html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
   html = html.replace(/_([^_]+)_/g, '<em>$1</em>');
   
-  // Lists (process line by line for better handling)
   const lines = html.split('\n');
   let inList = false;
   let result = [];
@@ -367,29 +427,17 @@ function formatMessageContent(content) {
   }
   html = result.join('\n');
   
-  // Links [text](url)
   html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
-  
-  // Tables (Markdown table syntax)
   html = parseTables(html);
   
-  // Reduce multiple consecutive newlines to a single paragraph break
-  // First, normalize multiple newlines
   html = html.replace(/\n{3,}/g, '\n\n');
-  
-  // Convert double newlines to paragraph breaks (for separation between blocks)
-  // But only where there isn't already a block element
   html = html.replace(/([^>])\n\n/g, '$1</p><p>');
-  
-  // Single newlines become <br> only within text (not after block elements)
   html = html.replace(/([^>])\n([^<])/g, '$1<br>$2');
   
-  // Wrap in paragraphs if not already wrapped and contains text
   if (!html.startsWith('<') && html.trim()) {
     html = '<p>' + html + '</p>';
   }
   
-  // Clean up any empty paragraphs
   html = html.replace(/<p><\/p>/g, '');
   html = html.replace(/<p><br><\/p>/g, '');
   
@@ -406,12 +454,10 @@ async function handleSendMessage() {
   const text = elements.chatInput.value.trim();
   if (!text || conversation.isStreaming) return;
   
-  // Add user message
   addMessage('user', text);
   elements.chatInput.value = '';
   elements.chatInput.style.height = 'auto';
   
-  // Send to AI
   await sendChatMessage(text);
 }
 
@@ -428,10 +474,7 @@ async function sendChatMessage(userMessage) {
   elements.sendMessage.disabled = true;
   showChatStatus('Thinking...', 'loading');
   
-  // Build messages array from conversation history
   const messages = buildMessagesForAPI(userMessage);
-  
-  // Add empty assistant message for streaming
   const assistantMsg = addMessage('assistant', '', true);
   
   try {
@@ -461,7 +504,6 @@ async function sendChatMessage(userMessage) {
 function buildMessagesForAPI(currentUserMessage) {
   const messages = [];
   
-  // Add system message if we have context
   if (conversation.currentContext) {
     messages.push({
       role: 'system',
@@ -469,7 +511,6 @@ function buildMessagesForAPI(currentUserMessage) {
     });
   }
   
-  // Add conversation history (last 10 messages for context)
   const history = conversation.messages.slice(-10);
   for (const msg of history) {
     if (!msg.isStreaming && msg.content) {
@@ -480,7 +521,6 @@ function buildMessagesForAPI(currentUserMessage) {
     }
   }
   
-  // If the last message isn't the current user message, add it
   const lastMsg = history[history.length - 1];
   if (!lastMsg || lastMsg.role !== 'user' || lastMsg.content !== currentUserMessage) {
     messages.push({
@@ -509,7 +549,6 @@ async function* makeChatRequest(profile, messages) {
     'Content-Type': 'application/json'
   };
   
-  // Filter out system messages for non-OpenAI providers if needed
   const chatMessages = messages.filter(m => m.role !== 'system');
   
   if (isAnthropic) {
@@ -517,7 +556,6 @@ async function* makeChatRequest(profile, messages) {
     headers['anthropic-version'] = '2023-06-01';
     delete headers['Authorization'];
     
-    // Convert messages to Anthropic format
     let systemPrompt = messages.find(m => m.role === 'system')?.content || '';
     const conversationMessages = chatMessages.map(m => ({
       role: m.role === 'assistant' ? 'assistant' : 'user',
@@ -538,7 +576,6 @@ async function* makeChatRequest(profile, messages) {
     endpoint = `${apiUrl}/${modelName}:streamGenerateContent?key=${apiKey}`;
     delete headers['Authorization'];
     
-    // Convert to Gemini format
     const contents = chatMessages.map(m => ({
       role: m.role === 'assistant' ? 'model' : 'user',
       parts: [{ text: m.content }]
@@ -546,7 +583,6 @@ async function* makeChatRequest(profile, messages) {
     
     requestBody = { contents };
   } else {
-    // OpenAI-compatible format
     requestBody = {
       model: model || 'gpt-4o',
       messages: messages,
@@ -638,20 +674,17 @@ async function copyLastMessage() {
 
 // Handle incoming action from context menu
 async function handleIncomingAction(action, text, isPageContent = false) {
-  // Switch to chat tab
   switchTab('chat');
   
-  // Store context for follow-up questions
   conversation.currentContext = isPageContent ? text : null;
   
-  // Build the prompt
-  const prompt = action.prompt_template.replace(/\{\{text\}\}/g, text);
+  // Apply global instructions to action prompt
+  const fullPrompt = GLOBAL_INSTRUCTIONS + action.prompt_template;
+  const prompt = fullPrompt.replace(/\{\{text\}\}/g, text);
   
-  // Add user message showing what they requested
   const actionLabel = isPageContent ? `${action.label} (page content)` : action.label;
   addMessage('user', `[${actionLabel}]`);
   
-  // Get AI response
   const profile = getActiveProfile();
   if (!profile || !profile.apiKey) {
     addMessage('assistant', 'Please configure your API key in the Settings tab.');
@@ -661,7 +694,6 @@ async function handleIncomingAction(action, text, isPageContent = false) {
   conversation.isStreaming = true;
   showChatStatus('Generating...', 'loading');
   
-  // For actions, we treat them as a single-turn conversation
   const messages = [{ role: 'user', content: prompt }];
   const assistantMsg = addMessage('assistant', '', true);
   
@@ -832,6 +864,7 @@ function renderActionsList() {
         <div class="action-header">
           <span class="action-name">${escapeHtml(action.label)}</span>
           <span class="action-mode ${action.mode}">${action.mode}</span>
+          ${action.category ? `<span class="action-category">${action.category}</span>` : ''}
         </div>
         <div class="action-prompt" title="${escapeHtml(action.prompt_template)}">${escapeHtml(action.prompt_template)}</div>
       </div>
@@ -866,7 +899,8 @@ async function addAction() {
     id: 'action-' + Date.now(),
     label,
     mode,
-    prompt_template: prompt
+    prompt_template: prompt,
+    category: 'custom'
   };
   
   currentActions.push(newAction);
@@ -907,25 +941,11 @@ function setupMessageListener() {
     try {
       switch (message.type) {
         case 'ACTION_CREATE':
-          // Handle create action from context menu
           handleIncomingAction(message.action, message.text, message.isPageContent);
           break;
           
         case 'ACTION_REWRITE':
-          // For rewrite mode, just show the result in chat
           handleIncomingAction(message.action, message.text, false);
-          break;
-          
-        case 'STREAM_START':
-          // Legacy - handled by handleIncomingAction
-          break;
-          
-        case 'STREAM_CHUNK':
-          // Legacy - handled by handleIncomingAction
-          break;
-          
-        case 'STREAM_END':
-          // Legacy - handled by handleIncomingAction
           break;
           
         case 'STREAM_ERROR':

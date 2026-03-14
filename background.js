@@ -1,37 +1,39 @@
 // Kaguya Writer - Background Service Worker
 
+// Global instructions applied to all actions
+const GLOBAL_INSTRUCTIONS = `CRITICAL INSTRUCTIONS:
+- Output ONLY the result, with no introduction or explanation
+- NO "Here is" or "Here are" phrases
+- NO multiple versions - provide ONE result only
+- NO questions at the end
+- NO formatting markers like ** or > unless necessary for the output
+
+`;
+
 // Default actions
 const DEFAULT_ACTIONS = [
-  {
-    id: 'professional-polish',
-    label: 'Professional Polish',
-    prompt_template: 'Rewrite the following text to be more professional and polished.\n\nCRITICAL INSTRUCTIONS:\n- Output ONLY the rewritten text\n- NO introduction, NO headers, NO explanations\n- NO "Here is" or "Here are" phrases\n- NO multiple versions - provide ONE result only\n- NO questions at the end\n- NO formatting markers like ** or >\n\nText to rewrite:\n{{text}}',
-    mode: 'rewrite'
-  },
-  {
-    id: 'simplify',
-    label: 'Simplify',
-    prompt_template: 'Rewrite the following text to be simpler and easier to understand.\n\nCRITICAL INSTRUCTIONS:\n- Output ONLY the simplified text\n- NO introduction, NO headers, NO explanations\n- NO "Here is" or "Here are" phrases\n- NO multiple versions - provide ONE simple version only\n- NO breakdown of changes or translations\n- NO questions at the end\n- NO formatting markers like ** or >\n\nText to simplify:\n{{text}}',
-    mode: 'rewrite'
-  },
-  {
-    id: 'expand',
-    label: 'Expand',
-    prompt_template: 'Expand on the following text with more detail and context.\n\nCRITICAL INSTRUCTIONS:\n- Output ONLY the expanded text\n- NO introduction, NO headers, NO explanations\n- NO "Here is" or "Here are" phrases\n- NO "Expanded version:" labels\n- NO multiple versions - provide ONE result only\n- NO questions at the end\n- NO formatting markers like ** or > unless in the original\n\nText to expand:\n{{text}}',
-    mode: 'rewrite'
-  },
-  {
-    id: 'summarize',
-    label: 'Summarize',
-    prompt_template: 'Summarize the following text concisely.\n\nCRITICAL INSTRUCTIONS:\n- Output ONLY the summary text\n- NO introduction, NO headers, NO explanations\n- NO "Summary:" or "Here is" phrases\n- NO bullet points unless the original used them\n- ONE paragraph only\n- NO questions at the end\n\nText to summarize:\n{{text}}',
-    mode: 'create'
-  },
-  {
-    id: 'brainstorm',
-    label: 'Brainstorm Ideas',
-    prompt_template: 'Based on the following text, generate a list of related ideas and concepts.\n\nCRITICAL INSTRUCTIONS:\n- Output ONLY bullet points\n- NO introduction like "Here are some ideas"\n- NO explanations after bullet points\n- NO conclusion or summary paragraph\n- NO questions at the end\n- Just the bullet list, nothing else\n\nSource text:\n{{text}}',
-    mode: 'create'
-  }
+  // Quick Actions (Create mode)
+  { id: 'summarize', label: 'Summarize', prompt_template: 'Summarize the following text concisely.', mode: 'create', category: 'quick' },
+  { id: 'explain', label: 'Explain', prompt_template: 'Explain the following text in simple terms.', mode: 'create', category: 'quick' },
+  
+  // Rewrite Actions
+  { id: 'paraphrase', label: 'Paraphrase', prompt_template: 'Paraphrase the following text using different words while keeping the same meaning.', mode: 'rewrite', category: 'rewrite' },
+  { id: 'improve', label: 'Improve', prompt_template: 'Improve the following text by fixing grammar, clarity, and flow.', mode: 'rewrite', category: 'rewrite' },
+  
+  // Change Tone
+  { id: 'tone-academic', label: 'Academic', prompt_template: 'Rewrite the following text in an academic tone.', mode: 'rewrite', category: 'tone' },
+  { id: 'tone-professional', label: 'Professional', prompt_template: 'Rewrite the following text in a professional tone.', mode: 'rewrite', category: 'tone' },
+  { id: 'tone-persuasive', label: 'Persuasive', prompt_template: 'Rewrite the following text to be more persuasive and compelling.', mode: 'rewrite', category: 'tone' },
+  { id: 'tone-casual', label: 'Casual', prompt_template: 'Rewrite the following text in a casual, conversational tone.', mode: 'rewrite', category: 'tone' },
+  { id: 'tone-funny', label: 'Funny', prompt_template: 'Rewrite the following text to be humorous and entertaining.', mode: 'rewrite', category: 'tone' },
+  
+  // Change Length
+  { id: 'length-shorter', label: 'Make shorter', prompt_template: 'Rewrite the following text to be more concise and shorter.', mode: 'rewrite', category: 'length' },
+  { id: 'length-longer', label: 'Make longer', prompt_template: 'Expand the following text with more detail and depth.', mode: 'rewrite', category: 'length' },
+  
+  // Create Actions
+  { id: 'tagline', label: 'Tagline', prompt_template: 'Generate a catchy tagline based on the following text.', mode: 'create', category: 'create' },
+  { id: 'social-media', label: 'Social media post', prompt_template: 'Create a social media post based on the following text.', mode: 'create', category: 'create' }
 ];
 
 // Default profile
@@ -148,23 +150,37 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   return true;
 });
 
-// Build context menus
+// Build context menus with hierarchical structure
 async function buildContextMenus() {
   try {
     await chrome.contextMenus.removeAll();
     
     const actions = actionsCache || DEFAULT_ACTIONS;
-    const rewriteActions = actions.filter(a => a.mode === 'rewrite');
-    const createActions = actions.filter(a => a.mode === 'create');
+    const quickActions = actions.filter(a => a.category === 'quick');
+    const rewriteActions = actions.filter(a => a.category === 'rewrite');
+    const toneActions = actions.filter(a => a.category === 'tone');
+    const lengthActions = actions.filter(a => a.category === 'length');
+    const createActions = actions.filter(a => a.category === 'create');
     
-    // Create single parent menu for page context (no selection - create only)
-    if (createActions.length > 0) {
+    // Create parent menu for page context (no selection - create only)
+    if (quickActions.length > 0 || createActions.length > 0) {
       chrome.contextMenus.create({
         id: 'kaguya-writer-page',
         title: '🌙 Kaguya Writer',
         contexts: ['page']
       });
       
+      // Quick actions for page context
+      for (const action of quickActions) {
+        chrome.contextMenus.create({
+          id: `page-${action.id}`,
+          parentId: 'kaguya-writer-page',
+          title: action.label,
+          contexts: ['page']
+        });
+      }
+      
+      // Create actions for page context
       for (const action of createActions) {
         chrome.contextMenus.create({
           id: `page-${action.id}`,
@@ -175,61 +191,118 @@ async function buildContextMenus() {
       }
     }
     
-    // Create single parent menu for text selection (all actions organized)
-    if (rewriteActions.length > 0 || createActions.length > 0) {
+    // Create parent menu for text selection (all actions with hierarchy)
+    if (quickActions.length > 0 || rewriteActions.length > 0 || toneActions.length > 0 || 
+        lengthActions.length > 0 || createActions.length > 0) {
       chrome.contextMenus.create({
         id: 'kaguya-writer-selection',
         title: '🌙 Kaguya Writer',
         contexts: ['selection']
       });
       
-      // Create actions first (if any)
-      if (createActions.length > 0) {
-        // Optional: Add a separator-like label as first item
-        // chrome.contextMenus.create({
-        //   id: 'sep-create',
-        //   parentId: 'kaguya-writer-selection',
-        //   title: '────── Create ──────',
-        //   contexts: ['selection'],
-        //   enabled: false
-        // });
-        
-        for (const action of createActions) {
+      // Quick Actions Section
+      if (quickActions.length > 0) {
+        for (const action of quickActions) {
           chrome.contextMenus.create({
-            id: `sel-create-${action.id}`,
+            id: `sel-quick-${action.id}`,
             parentId: 'kaguya-writer-selection',
             title: action.label,
             contexts: ['selection']
           });
         }
+        
+        // Separator after quick actions
+        chrome.contextMenus.create({
+          id: 'sep-after-quick',
+          parentId: 'kaguya-writer-selection',
+          title: '────────────',
+          contexts: ['selection'],
+          enabled: false
+        });
       }
       
-      // Rewrite actions (if any)
-      if (rewriteActions.length > 0) {
-        // Add separator if we have create actions
-        if (createActions.length > 0) {
-          chrome.contextMenus.create({
-            id: 'sep-rewrite',
-            parentId: 'kaguya-writer-selection',
-            title: '────────────',
-            contexts: ['selection'],
-            enabled: false
-          });
-        }
+      // Rewrite Section Header
+      if (rewriteActions.length > 0 || toneActions.length > 0 || lengthActions.length > 0) {
+        // Rewrite sub-menu
+        chrome.contextMenus.create({
+          id: 'rewrite-submenu',
+          parentId: 'kaguya-writer-selection',
+          title: 'Rewrite ▶',
+          contexts: ['selection']
+        });
         
-        // Optional: Add label for rewrite section
-        // chrome.contextMenus.create({
-        //   id: 'sep-rewrite-label',
-        //   parentId: 'kaguya-writer-selection',
-        //   title: '────── Rewrite ──────',
-        //   contexts: ['selection'],
-        //   enabled: false
-        // });
-        
+        // Direct rewrite actions
         for (const action of rewriteActions) {
           chrome.contextMenus.create({
             id: `sel-rewrite-${action.id}`,
-            parentId: 'kaguya-writer-selection',
+            parentId: 'rewrite-submenu',
+            title: action.label,
+            contexts: ['selection']
+          });
+        }
+        
+        // Change Tone sub-submenu
+        if (toneActions.length > 0) {
+          chrome.contextMenus.create({
+            id: 'tone-submenu',
+            parentId: 'rewrite-submenu',
+            title: 'Change tone ▶',
+            contexts: ['selection']
+          });
+          
+          for (const action of toneActions) {
+            chrome.contextMenus.create({
+              id: `sel-tone-${action.id}`,
+              parentId: 'tone-submenu',
+              title: action.label,
+              contexts: ['selection']
+            });
+          }
+        }
+        
+        // Change Length sub-submenu
+        if (lengthActions.length > 0) {
+          chrome.contextMenus.create({
+            id: 'length-submenu',
+            parentId: 'rewrite-submenu',
+            title: 'Change length ▶',
+            contexts: ['selection']
+          });
+          
+          for (const action of lengthActions) {
+            chrome.contextMenus.create({
+              id: `sel-length-${action.id}`,
+              parentId: 'length-submenu',
+              title: action.label,
+              contexts: ['selection']
+            });
+          }
+        }
+        
+        // Separator after rewrite
+        chrome.contextMenus.create({
+          id: 'sep-after-rewrite',
+          parentId: 'kaguya-writer-selection',
+          title: '────────────',
+          contexts: ['selection'],
+          enabled: false
+        });
+      }
+      
+      // Create Section
+      if (createActions.length > 0) {
+        // Create sub-menu
+        chrome.contextMenus.create({
+          id: 'create-submenu',
+          parentId: 'kaguya-writer-selection',
+          title: 'Create ▶',
+          contexts: ['selection']
+        });
+        
+        for (const action of createActions) {
+          chrome.contextMenus.create({
+            id: `sel-create-${action.id}`,
+            parentId: 'create-submenu',
             title: action.label,
             contexts: ['selection']
           });
@@ -237,7 +310,7 @@ async function buildContextMenus() {
       }
     }
     
-    console.log('[Kaguya Writer] Context menus built');
+    console.log('[Kaguya Writer] Context menus built with hierarchy');
   } catch (error) {
     console.error('[Kaguya Writer] Error building context menus:', error);
   }
@@ -264,7 +337,10 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   // Skip parent menus and separators
   if (info.menuItemId === 'kaguya-writer-page' || 
       info.menuItemId === 'kaguya-writer-selection' ||
-      info.menuItemId === 'sep-rewrite' ||
+      info.menuItemId === 'rewrite-submenu' ||
+      info.menuItemId === 'tone-submenu' ||
+      info.menuItemId === 'length-submenu' ||
+      info.menuItemId === 'create-submenu' ||
       info.menuItemId.startsWith('sep-')) {
     return;
   }
@@ -273,17 +349,19 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   
   // Extract original action ID from prefixed ID
   let actionId = info.menuItemId;
-  let context = '';
   
   if (actionId.startsWith('page-')) {
     actionId = actionId.replace('page-', '');
-    context = 'page';
-  } else if (actionId.startsWith('sel-create-')) {
-    actionId = actionId.replace('sel-create-', '');
-    context = 'selection-create';
+  } else if (actionId.startsWith('sel-quick-')) {
+    actionId = actionId.replace('sel-quick-', '');
   } else if (actionId.startsWith('sel-rewrite-')) {
     actionId = actionId.replace('sel-rewrite-', '');
-    context = 'selection-rewrite';
+  } else if (actionId.startsWith('sel-tone-')) {
+    actionId = actionId.replace('sel-tone-', '');
+  } else if (actionId.startsWith('sel-length-')) {
+    actionId = actionId.replace('sel-length-', '');
+  } else if (actionId.startsWith('sel-create-')) {
+    actionId = actionId.replace('sel-create-', '');
   }
   
   const action = actions.find(a => a.id === actionId);
@@ -295,17 +373,17 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   
   let selectedText = info.selectionText || '';
   
+  // Apply global instructions
+  const fullPrompt = GLOBAL_INSTRUCTIONS + action.prompt_template;
+  
   if (action.mode === 'create') {
-    // Open side panel immediately
     const openPromise = chrome.sidePanel.open({ windowId: tab.windowId });
     
     openPromise.then(() => {
       sidePanelOpen = true;
-      if (selectedText && context !== 'page') {
-        // Has selection - use it
+      if (selectedText && info.menuItemId.startsWith('sel-')) {
         sendActionToSidePanel(action, selectedText, false);
       } else {
-        // No selection - get page content
         handleCreateModeWithPageContent(action, tab);
       }
     }).catch(error => {
@@ -322,7 +400,6 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 
 // Send action to side panel for processing
 function sendActionToSidePanel(action, text, isPageContent) {
-  // Wait a moment for side panel to be ready
   setTimeout(() => {
     chrome.runtime.sendMessage({
       type: 'ACTION_CREATE',
@@ -338,7 +415,6 @@ function sendActionToSidePanel(action, text, isPageContent) {
 // Handle create mode with page content
 async function handleCreateModeWithPageContent(action, tab) {
   try {
-    // Inject content script to get page content
     let pageContent = '';
     try {
       const response = await chrome.tabs.sendMessage(tab.id, { type: 'GET_PAGE_CONTENT' });
@@ -373,7 +449,6 @@ async function handleCreateModeWithPageContent(action, tab) {
 
 // Handle rewrite mode
 async function handleRewriteMode(action, selectedText, tab) {
-  // Notify content script that generation is starting
   try {
     await chrome.tabs.sendMessage(tab.id, { type: 'GENERATING_START' });
   } catch (e) {
@@ -402,9 +477,9 @@ async function handleRewriteMode(action, selectedText, tab) {
       return;
     }
     
-    const prompt = action.prompt_template.replace(/\{\{text\}\}/g, selectedText);
+    const fullPrompt = GLOBAL_INSTRUCTIONS + action.prompt_template;
+    const prompt = fullPrompt.replace(/\{\{text\}\}/g, selectedText);
     
-    // Stream and replace
     const stream = await makeAIRequest(profile, prompt);
     let fullText = '';
     
@@ -415,7 +490,6 @@ async function handleRewriteMode(action, selectedText, tab) {
     
     await chrome.tabs.sendMessage(tab.id, { type: 'GENERATING_END' }).catch(() => {});
     
-    // Replace text
     try {
       await chrome.tabs.sendMessage(tab.id, { type: 'REPLACE_TEXT', newText: fullText });
     } catch (err) {
