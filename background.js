@@ -157,39 +157,83 @@ async function buildContextMenus() {
     const rewriteActions = actions.filter(a => a.mode === 'rewrite');
     const createActions = actions.filter(a => a.mode === 'create');
     
-    // Create parent menu for rewrite actions (requires selection)
-    if (rewriteActions.length > 0) {
-      chrome.contextMenus.create({
-        id: 'kaguya-writer-rewrite',
-        title: '🌙 Kaguya Writer',
-        contexts: ['selection']
-      });
-      
-      for (const action of rewriteActions) {
-        chrome.contextMenus.create({
-          id: action.id,
-          parentId: 'kaguya-writer-rewrite',
-          title: action.label,
-          contexts: ['selection']
-        });
-      }
-    }
-    
-    // Create parent menu for create actions (works on page or selection)
+    // Create single parent menu for page context (no selection - create only)
     if (createActions.length > 0) {
       chrome.contextMenus.create({
-        id: 'kaguya-writer-create',
+        id: 'kaguya-writer-page',
         title: '🌙 Kaguya Writer',
-        contexts: ['page', 'selection']
+        contexts: ['page']
       });
       
       for (const action of createActions) {
         chrome.contextMenus.create({
-          id: action.id,
-          parentId: 'kaguya-writer-create',
+          id: `page-${action.id}`,
+          parentId: 'kaguya-writer-page',
           title: action.label,
-          contexts: ['page', 'selection']
+          contexts: ['page']
         });
+      }
+    }
+    
+    // Create single parent menu for text selection (all actions organized)
+    if (rewriteActions.length > 0 || createActions.length > 0) {
+      chrome.contextMenus.create({
+        id: 'kaguya-writer-selection',
+        title: '🌙 Kaguya Writer',
+        contexts: ['selection']
+      });
+      
+      // Create actions first (if any)
+      if (createActions.length > 0) {
+        // Optional: Add a separator-like label as first item
+        // chrome.contextMenus.create({
+        //   id: 'sep-create',
+        //   parentId: 'kaguya-writer-selection',
+        //   title: '────── Create ──────',
+        //   contexts: ['selection'],
+        //   enabled: false
+        // });
+        
+        for (const action of createActions) {
+          chrome.contextMenus.create({
+            id: `sel-create-${action.id}`,
+            parentId: 'kaguya-writer-selection',
+            title: action.label,
+            contexts: ['selection']
+          });
+        }
+      }
+      
+      // Rewrite actions (if any)
+      if (rewriteActions.length > 0) {
+        // Add separator if we have create actions
+        if (createActions.length > 0) {
+          chrome.contextMenus.create({
+            id: 'sep-rewrite',
+            parentId: 'kaguya-writer-selection',
+            title: '────────────',
+            contexts: ['selection'],
+            enabled: false
+          });
+        }
+        
+        // Optional: Add label for rewrite section
+        // chrome.contextMenus.create({
+        //   id: 'sep-rewrite-label',
+        //   parentId: 'kaguya-writer-selection',
+        //   title: '────── Rewrite ──────',
+        //   contexts: ['selection'],
+        //   enabled: false
+        // });
+        
+        for (const action of rewriteActions) {
+          chrome.contextMenus.create({
+            id: `sel-rewrite-${action.id}`,
+            parentId: 'kaguya-writer-selection',
+            title: action.label,
+            contexts: ['selection']
+          });
+        }
       }
     }
     
@@ -217,15 +261,35 @@ async function getActiveProfile() {
 
 // Handle context menu clicks
 chrome.contextMenus.onClicked.addListener((info, tab) => {
-  if (info.menuItemId === 'kaguya-writer-create' || info.menuItemId === 'kaguya-writer-rewrite') {
+  // Skip parent menus and separators
+  if (info.menuItemId === 'kaguya-writer-page' || 
+      info.menuItemId === 'kaguya-writer-selection' ||
+      info.menuItemId === 'sep-rewrite' ||
+      info.menuItemId.startsWith('sep-')) {
     return;
   }
   
   const actions = actionsCache || DEFAULT_ACTIONS;
-  const action = actions.find(a => a.id === info.menuItemId);
+  
+  // Extract original action ID from prefixed ID
+  let actionId = info.menuItemId;
+  let context = '';
+  
+  if (actionId.startsWith('page-')) {
+    actionId = actionId.replace('page-', '');
+    context = 'page';
+  } else if (actionId.startsWith('sel-create-')) {
+    actionId = actionId.replace('sel-create-', '');
+    context = 'selection-create';
+  } else if (actionId.startsWith('sel-rewrite-')) {
+    actionId = actionId.replace('sel-rewrite-', '');
+    context = 'selection-rewrite';
+  }
+  
+  const action = actions.find(a => a.id === actionId);
   
   if (!action) {
-    console.error('[Kaguya Writer] Action not found:', info.menuItemId);
+    console.error('[Kaguya Writer] Action not found:', actionId, 'from', info.menuItemId);
     return;
   }
   
@@ -237,7 +301,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     
     openPromise.then(() => {
       sidePanelOpen = true;
-      if (selectedText) {
+      if (selectedText && context !== 'page') {
         // Has selection - use it
         sendActionToSidePanel(action, selectedText, false);
       } else {
