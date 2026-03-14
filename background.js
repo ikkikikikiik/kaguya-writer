@@ -375,27 +375,12 @@ async function handleCreateModeWithPageContent(action, tab) {
 }
 
 // Handle rewrite mode
+// Handle rewrite mode with live streaming replacement
 async function handleRewriteMode(action, selectedText, tab) {
-  try {
-    await chrome.tabs.sendMessage(tab.id, { type: 'GENERATING_START' });
-  } catch (e) {
-    try {
-      await chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        files: ['content.js']
-      });
-      await new Promise(r => setTimeout(r, 100));
-      await chrome.tabs.sendMessage(tab.id, { type: 'GENERATING_START' });
-    } catch (injectErr) {
-      console.warn('[Kaguya Writer] Could not show generating indicator:', injectErr);
-    }
-  }
-  
   try {
     const profile = await getActiveProfile();
     
     if (!profile || !profile.apiKey) {
-      await chrome.tabs.sendMessage(tab.id, { type: 'GENERATING_END' }).catch(() => {});
       await chrome.tabs.sendMessage(tab.id, {
         type: 'SHOW_TOAST',
         message: 'Please configure API key in settings',
@@ -404,32 +389,44 @@ async function handleRewriteMode(action, selectedText, tab) {
       return;
     }
     
-    const fullPrompt = GLOBAL_INSTRUCTIONS + action.prompt_template;
-    const prompt = fullPrompt.replace(/\{\{text\}\}/g, selectedText);
-    
-    const stream = await makeAIRequest(profile, prompt);
-    let fullText = '';
-    
-    for await (const chunk of stream) {
-      fullText += chunk;
-      chrome.tabs.sendMessage(tab.id, { type: 'GENERATING_CHUNK' }).catch(() => {});
-    }
-    
-    await chrome.tabs.sendMessage(tab.id, { type: 'GENERATING_END' }).catch(() => {});
-    
+    // Inject content script if needed
     try {
-      await chrome.tabs.sendMessage(tab.id, { type: 'REPLACE_TEXT', newText: fullText });
-    } catch (err) {
+      await chrome.tabs.sendMessage(tab.id, { type: 'PING' });
+    } catch (e) {
       await chrome.scripting.executeScript({
         target: { tabId: tab.id },
         files: ['content.js']
       });
       await new Promise(r => setTimeout(r, 100));
-      await chrome.tabs.sendMessage(tab.id, { type: 'REPLACE_TEXT', newText: fullText });
     }
+    
+    // Start live replacement - this deletes selected text and creates insertion point
+    const startResponse = await chrome.tabs.sendMessage(tab.id, { type: 'STREAM_REPLACE_START' });
+    if (!startResponse || !startResponse.success) {
+      throw new Error('Failed to start live replacement');
+    }
+    
+    const fullPrompt = GLOBAL_INSTRUCTIONS + action.prompt_template;
+    const prompt = fullPrompt.replace(/\{\{text\}\}/g, selectedText);
+    
+    // Stream chunks directly into the page
+    const stream = await makeAIRequest(profile, prompt);
+    
+    for await (const chunk of stream) {
+      // Send each chunk to be appended at the insertion point
+      chrome.tabs.sendMessage(tab.id, { 
+        type: 'STREAM_REPLACE_CHUNK', 
+        chunk: chunk 
+      }).catch(err => {
+        console.warn('[Kaguya Writer] Failed to send chunk:', err);
+      });
+    }
+    
+    // Finalize the replacement
+    await chrome.tabs.sendMessage(tab.id, { type: 'STREAM_REPLACE_END' });
+    
   } catch (error) {
     console.error('[Kaguya Writer] Rewrite error:', error);
-    await chrome.tabs.sendMessage(tab.id, { type: 'GENERATING_END' }).catch(() => {});
     await chrome.tabs.sendMessage(tab.id, {
       type: 'SHOW_TOAST',
       message: 'Error: ' + error.message,
