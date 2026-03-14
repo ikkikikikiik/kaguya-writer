@@ -243,12 +243,24 @@ body {
   font-size: 12px;
 }
 
-.message-content p {
-  margin-bottom: var(--spacing-sm);
+.message-content h1, .message-content h2, .message-content h3, .message-content h4 {
+  margin: var(--spacing-sm) 0;
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
-.message-content p:last-child {
-  margin-bottom: 0;
+.message-content h1 { font-size: 1.3em; }
+.message-content h2 { font-size: 1.15em; }
+.message-content h3 { font-size: 1.05em; }
+.message-content h4 { font-size: 1em; }
+
+.message-content strong {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.message-content em {
+  font-style: italic;
 }
 
 .message-content ul, .message-content ol {
@@ -258,6 +270,15 @@ body {
 
 .message-content li {
   margin-bottom: var(--spacing-xs);
+}
+
+.message-content a {
+  color: var(--accent-primary);
+  text-decoration: underline;
+}
+
+.message-content a:hover {
+  color: var(--accent-secondary);
 }
 
 /* Streaming Indicator */

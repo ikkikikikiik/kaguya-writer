@@ -190,7 +190,7 @@ function updateMessage(messageId, newContent) {
     message.content = newContent;
     const msgEl = document.querySelector(`[data-message-id="${messageId}"] .message-content`);
     if (msgEl) {
-      msgEl.textContent = newContent;
+      msgEl.innerHTML = formatMessageContent(newContent);
     }
   }
 }
@@ -238,21 +238,86 @@ function renderMessage(message) {
   const avatar = message.role === 'user' ? '👤' : '🌙';
   const label = message.role === 'user' ? 'You' : 'Kaguya';
   
+  const contentEl = document.createElement('div');
+  contentEl.className = 'message-content';
+  contentEl.innerHTML = formatMessageContent(message.content);
+  
   msgEl.innerHTML = `
     <div class="message-header">
       <span class="message-avatar">${avatar}</span>
       <span class="message-label">${label}</span>
     </div>
-    <div class="message-content">${formatMessageContent(message.content)}</div>
   `;
+  msgEl.appendChild(contentEl);
   
   elements.chatMessages.appendChild(msgEl);
 }
 
-// Format message content (basic markdown)
+// Format message content with Markdown support
 function formatMessageContent(content) {
-  // Simple formatting - preserve line breaks
-  return content.replace(/\n/g, '<br>');
+  if (!content) return '';
+  
+  let html = content;
+  
+  // Escape HTML first to prevent XSS
+  html = html.replace(/&/g, '&amp;')
+             .replace(/</g, '&lt;')
+             .replace(/>/g, '&gt;');
+  
+  // Code blocks (```code```)
+  html = html.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
+  
+  // Inline code (`code`)
+  html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+  
+  // Headers (# ## ###)
+  html = html.replace(/^#### (.*$)/gim, '<h4>$1</h4>');
+  html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
+  html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>');
+  html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>');
+  
+  // Bold (**text**)
+  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  
+  // Italic (*text* or _text_) - but not inside **
+  html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+  html = html.replace(/_([^_]+)_/g, '<em>$1</em>');
+  
+  // Lists (process line by line for better handling)
+  const lines = html.split('\n');
+  let inList = false;
+  let result = [];
+  
+  for (let line of lines) {
+    const listMatch = line.match(/^[\s]*[-*] (.*)$/);
+    if (listMatch) {
+      if (!inList) {
+        result.push('<ul>');
+        inList = true;
+      }
+      result.push(`<li>${listMatch[1]}</li>`);
+    } else {
+      if (inList) {
+        result.push('</ul>');
+        inList = false;
+      }
+      result.push(line);
+    }
+  }
+  if (inList) {
+    result.push('</ul>');
+  }
+  html = result.join('\n');
+  
+  // Links [text](url)
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+  
+  // Line breaks (but not after block elements)
+  html = html.replace(/<\/h[1-4]>\n/g, '$&');
+  html = html.replace(/<\/ul>\n/g, '$&');
+  html = html.replace(/\n/g, '<br>');
+  
+  return html;
 }
 
 // Scroll to bottom of chat
