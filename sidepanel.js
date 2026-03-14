@@ -164,13 +164,15 @@ function startNewChat() {
     isStreaming: false,
     currentContext: null
   };
+  messageIdCounter = 0;
   renderChat();
 }
 
 // Add a message to the chat
+let messageIdCounter = 0;
 function addMessage(role, content, isStreaming = false) {
   const message = {
-    id: Date.now(),
+    id: `${Date.now()}-${++messageIdCounter}`,
     role,  // 'user' or 'assistant'
     content,
     isStreaming
