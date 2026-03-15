@@ -50,14 +50,6 @@ Go to **Shoin** tab in the side panel to:
 - **Smart rewrite** - AI-assisted prompt optimization
 - Use `{{text}}` placeholder for selected content
 
-## Design
-
-**Liquid Glass aesthetic** - Glass morphism UI with:
-- Backdrop blur and translucent surfaces
-- Holographic cyan/magenta accents
-- Spring physics animations
-- Smooth breathing pulse effects
-
 ## Privacy
 
 - All API keys stored locally in Chrome
