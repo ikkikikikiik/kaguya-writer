@@ -235,6 +235,11 @@ async function getActiveProfile() {
   return DEFAULT_PROFILE;
 }
 
+// Known create mode action IDs (for immediate side panel open before async)
+const CREATE_MODE_IDS = new Set([
+  'summarize', 'explain', 'tagline', 'social-media'
+]);
+
 // Handle context menu clicks
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (info.menuItemId === 'kaguya-writer-page' || 
@@ -243,9 +248,11 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     return;
   }
   
-  // Ensure cache is loaded (service worker may have been restarted)
-  const actions = await ensureCacheLoaded();
+  // IMPORTANT: For create mode, we must open the side panel IMMEDIATELY 
+  // before any async operations to preserve the user gesture context
+  // https://stackoverflow.com/questions/77213045/error-sidepanel-open-may-only-be-called-in-response-to-a-user-gesture-re
   
+  // Get the action ID synchronously
   let actionId = info.menuItemId;
   if (actionId.startsWith('page-')) {
     actionId = actionId.replace('page-', '');
@@ -253,32 +260,46 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     actionId = actionId.replace('sel-', '');
   }
   
+  // Check if this is likely a create mode action BEFORE any async operations
+  const isCreateMode = CREATE_MODE_IDS.has(actionId) || 
+                       actionId.startsWith('action-') || 
+                       actionId.startsWith('scroll-');
+  
+  // For create mode, open side panel IMMEDIATELY before any async work
+  let sidePanelPromise = null;
+  if (isCreateMode) {
+    // This MUST be called synchronously before any await
+    sidePanelPromise = chrome.sidePanel.open({ windowId: tab.windowId });
+  }
+  
+  // Now we can do async work
+  const actions = await ensureCacheLoaded();
+  
   const action = actions.find(a => a.id === actionId);
   
   if (!action) {
     console.error('[Kaguya Writer] Action not found:', actionId, 'from', info.menuItemId);
-    // Try to refresh cache and rebuild menus for next time
     await refreshCache();
     await buildContextMenus();
     return;
   }
   
   let selectedText = info.selectionText || '';
-  const fullPrompt = GLOBAL_INSTRUCTIONS + action.prompt_template;
   
   if (action.mode === 'create') {
-    const openPromise = chrome.sidePanel.open({ windowId: tab.windowId });
-    
-    openPromise.then(() => {
+    // Use the already-started side panel open promise
+    try {
+      await sidePanelPromise;
       sidePanelOpen = true;
+      
       if (selectedText && info.menuItemId.startsWith('sel-')) {
         sendActionToSidePanel(action, selectedText, false);
       } else {
         handleCreateModeWithPageContent(action, tab);
       }
-    }).catch(error => {
+    } catch (error) {
       console.error('[Kaguya Writer] Failed to open side panel:', error);
-    });
+    }
   } else if (action.mode === 'rewrite') {
     if (!selectedText) {
       console.error('[Kaguya Writer] Rewrite mode requires text selection');
