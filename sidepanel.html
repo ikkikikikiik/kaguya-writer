@@ -47,15 +47,16 @@
           </div>
           
           <div class="chat-input-wrapper">
-            <!-- Attachment Button -->
-            <button id="attachBtn" class="attach-btn" title="Add attachment">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12 5v14M5 12h14"/>
-              </svg>
-            </button>
-            
-            <!-- Attachment Menu -->
-            <div id="attachMenu" class="attach-menu hidden">
+            <!-- Attachment Button & Menu Container -->
+            <div class="attach-container">
+              <button id="attachBtn" class="attach-btn" title="Add attachment">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 5v14M5 12h14"/>
+                </svg>
+              </button>
+              
+              <!-- Attachment Menu -->
+              <div id="attachMenu" class="attach-menu hidden">
               <button class="attach-option" id="attachImage" title="Upload image">
                 <span class="attach-icon">🖼️</span>
                 <span>Image</span>
@@ -68,6 +69,7 @@
                 <span class="attach-icon">🌐</span>
                 <span>Webpage</span>
               </button>
+            </div>
             </div>
             
             <!-- Hidden file inputs -->
@@ -316,6 +318,7 @@ Use {{text}} as a placeholder for the selected text."></textarea>
   </div>
 
   <script src="marked.min.js"></script>
+  <script src="pdf.min.js"></script>
   <script src="sidepanel.js"></script>
 </body>
 </html>
