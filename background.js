@@ -210,7 +210,6 @@ async function buildContextMenus() {
           contexts: ['selection']
         });
       }
-      }
     }
     
     console.log('[Kaguya Writer] Context menus built - flat structure');
