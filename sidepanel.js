@@ -222,6 +222,9 @@ async function init() {
   await loadActions();
   setupMessageListener();
   
+  // Set initial chat placeholder
+  updateChatPlaceholder();
+  
   // Notify background that side panel is open
   try {
     await chrome.runtime.sendMessage({ type: 'SIDE_PANEL_OPEN' });
