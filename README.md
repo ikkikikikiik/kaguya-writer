@@ -40,6 +40,8 @@ Any OpenAI-compatible endpoint works:
 
 ## Shoin (Custom Scrolls)
 
+*Shoin (書院)* is Japanese for "scriptorium" — a place where scrolls are crafted and kept. The Shoin tab is your personal scroll workshop for managing custom actions.
+
 Go to **Shoin** tab in the side panel to:
 - **Craft new scrolls** - Create custom rewrite/create actions
 - **Organize with tags** - Tag scrolls and filter by tags
