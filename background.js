@@ -86,6 +86,12 @@ async function ensureCacheLoaded() {
   return actionsCache || DEFAULT_ACTIONS;
 }
 
+// Force fresh cache refresh from storage - use when handling user actions
+async function getFreshActions() {
+  await refreshCache();
+  return actionsCache || DEFAULT_ACTIONS;
+}
+
 // Refresh cache from storage
 async function refreshCache() {
   const result = await chrome.storage.local.get(['actions']);
@@ -273,7 +279,8 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   }
   
   // Now we can do async work
-  const actions = await ensureCacheLoaded();
+  // IMPORTANT: Always get fresh actions from storage to avoid executing stale/wrong action
+  const actions = await getFreshActions();
   
   const action = actions.find(a => a.id === actionId);
   
