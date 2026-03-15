@@ -180,12 +180,14 @@ const elements = {
   scrollPrompt: document.getElementById('scrollPrompt'),
   craftScrollBtn: document.getElementById('craftScrollBtn'),
   craftingStatus: document.getElementById('craftingStatus'),
+  smartRewriteBtn: document.getElementById('smartRewriteBtn'),
   editScrollId: document.getElementById('editScrollId'),
   editScrollName: document.getElementById('editScrollName'),
   editScrollMode: document.getElementById('editScrollMode'),
   editScrollPrompt: document.getElementById('editScrollPrompt'),
   saveScrollEdit: document.getElementById('saveScrollEdit'),
   deleteScrollEdit: document.getElementById('deleteScrollEdit'),
+  editSmartRewriteBtn: document.getElementById('editSmartRewriteBtn'),
   resetScrolls: document.getElementById('resetScrolls')
 };
 
@@ -245,10 +247,12 @@ function setupEventListeners() {
   
   // Shoin - Crafting
   elements.craftScrollBtn.addEventListener('click', craftScroll);
+  elements.smartRewriteBtn.addEventListener('click', () => smartRewritePrompt(elements.scrollPrompt, elements.smartRewriteBtn, elements.craftingStatus));
   
   // Shoin - Edit
   elements.saveScrollEdit.addEventListener('click', saveEditedScroll);
   elements.deleteScrollEdit.addEventListener('click', deleteEditedScroll);
+  elements.editSmartRewriteBtn.addEventListener('click', () => smartRewritePrompt(elements.editScrollPrompt, elements.editSmartRewriteBtn, null));
   
   // Shoin - Reset
   elements.resetScrolls.addEventListener('click', resetScrolls);
@@ -1200,6 +1204,85 @@ async function resetScrolls() {
   await chrome.storage.local.set({ actions: currentActions });
   renderScrollsList();
   chrome.runtime.sendMessage({ type: 'REFRESH_MENUS' }).catch(() => {});
+}
+
+// Smart rewrite prompt using AI
+async function smartRewritePrompt(textareaElement, buttonElement, statusElement) {
+  const currentText = textareaElement.value.trim();
+  
+  if (!currentText) {
+    if (statusElement) showCraftingStatus('Please enter a prompt first', 'error');
+    return;
+  }
+  
+  // Get active profile for API
+  const profile = await getActiveProfile();
+  if (!profile.apiKey) {
+    if (statusElement) showCraftingStatus('Please configure an API profile first', 'error');
+    return;
+  }
+  
+  // Show loading state
+  buttonElement.disabled = true;
+  buttonElement.classList.add('spinning');
+  if (statusElement) showCraftingStatus('Rewriting...', '');
+  
+  const rewritePrompt = `Rewrite the following prompt to be clear and concise. Focus on:
+- Clarity and directness
+- No overly verbose instructions
+- Must include {{text}} placeholder for the input text
+- Keep the same intent but make it more effective
+
+Original prompt:
+${currentText}
+
+Rewritten prompt (output ONLY the rewritten prompt, nothing else):`;
+
+  try {
+    const response = await fetch(profile.apiUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${profile.apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: profile.model || 'gpt-4o',
+        messages: [
+          { role: 'system', content: 'You are a prompt optimization assistant. Rewrite prompts to be clear, concise, and effective.' },
+          { role: 'user', content: rewritePrompt }
+        ],
+        temperature: 0.7,
+        max_tokens: 500
+      })
+    });
+    
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`API error: ${error}`);
+    }
+    
+    const data = await response.json();
+    let rewrittenPrompt = data.choices[0].message.content.trim();
+    
+    // Ensure {{text}} placeholder exists
+    if (!rewrittenPrompt.includes('{{text}}')) {
+      rewrittenPrompt += '\n\n{{text}}';
+    }
+    
+    // Update textarea
+    textareaElement.value = rewrittenPrompt;
+    
+    // Clear any error states
+    clearFieldError(textareaElement);
+    
+    if (statusElement) showCraftingStatus('Prompt rewritten!', 'success');
+  } catch (error) {
+    console.error('[Kaguya Writer] Smart rewrite error:', error);
+    if (statusElement) showCraftingStatus('Rewrite failed. Please try again.', 'error');
+  } finally {
+    buttonElement.disabled = false;
+    buttonElement.classList.remove('spinning');
+  }
 }
 
 // ==================== MESSAGE HANDLER ====================

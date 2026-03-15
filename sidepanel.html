@@ -189,9 +189,16 @@
 
             <div class="form-group">
               <label for="scrollPrompt">Prompt Template</label>
-              <textarea id="scrollPrompt" rows="6" placeholder="e.g., Rewrite the following text to be more professional: {{text}}
+              <div class="prompt-input-wrapper">
+                <textarea id="scrollPrompt" rows="6" placeholder="e.g., Rewrite the following text to be more professional: {{text}}
 
 Use {{text}} as a placeholder for the selected text."></textarea>
+                <button id="smartRewriteBtn" class="smart-rewrite-btn" title="Smart rewrite">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+                  </svg>
+                </button>
+              </div>
             </div>
 
             <div class="crafting-actions">
@@ -234,7 +241,14 @@ Use {{text}} as a placeholder for the selected text."></textarea>
 
             <div class="form-group">
               <label for="editScrollPrompt">Prompt Template</label>
-              <textarea id="editScrollPrompt" rows="6" placeholder="Use {{text}} as a placeholder for the selected text."></textarea>
+              <div class="prompt-input-wrapper">
+                <textarea id="editScrollPrompt" rows="6" placeholder="Use {{text}} as a placeholder for the selected text."></textarea>
+                <button id="editSmartRewriteBtn" class="smart-rewrite-btn" title="Smart rewrite">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+                  </svg>
+                </button>
+              </div>
             </div>
 
             <div class="crafting-actions">

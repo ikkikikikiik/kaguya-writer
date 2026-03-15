@@ -1302,6 +1302,60 @@ body {
   gap: 20px;
 }
 
+/* Prompt input with smart rewrite button */
+.prompt-input-wrapper {
+  position: relative;
+}
+
+.prompt-input-wrapper textarea {
+  padding-right: 44px;
+}
+
+.smart-rewrite-btn {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: linear-gradient(135deg, rgba(100, 200, 255, 0.15), rgba(200, 100, 255, 0.1));
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: var(--flow-cyan);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s var(--viscous);
+}
+
+.smart-rewrite-btn:hover {
+  background: linear-gradient(135deg, rgba(100, 200, 255, 0.25), rgba(200, 100, 255, 0.15));
+  border-color: rgba(100, 220, 255, 0.4);
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(100, 200, 255, 0.2);
+}
+
+.smart-rewrite-btn:active {
+  transform: scale(0.95);
+}
+
+.smart-rewrite-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.smart-rewrite-btn.spinning svg {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 .crafting-actions {
   display: flex;
   align-items: center;
