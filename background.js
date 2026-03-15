@@ -195,13 +195,16 @@ async function buildContextMenus() {
           });
         }
         
-        chrome.contextMenus.create({
-          id: 'sep-after-quick',
-          parentId: 'kaguya-writer-selection',
-          title: '────────────',
-          contexts: ['selection'],
-          enabled: false
-        });
+        // Only add separator if there are Rewrite actions following
+        if (rewriteActions.length > 0 || toneActions.length > 0 || lengthActions.length > 0) {
+          chrome.contextMenus.create({
+            id: 'sep-after-quick',
+            parentId: 'kaguya-writer-selection',
+            title: '────────────',
+            contexts: ['selection'],
+            enabled: false
+          });
+        }
       }
       
       // Rewrite Actions
@@ -239,13 +242,16 @@ async function buildContextMenus() {
           });
         }
         
-        chrome.contextMenus.create({
-          id: 'sep-after-rewrite',
-          parentId: 'kaguya-writer-selection',
-          title: '────────────',
-          contexts: ['selection'],
-          enabled: false
-        });
+        // Only add separator if there are visible Create Actions or Custom Actions following
+        if (createActions.length > 0 || customActions.length > 0) {
+          chrome.contextMenus.create({
+            id: 'sep-after-rewrite',
+            parentId: 'kaguya-writer-selection',
+            title: '────────────',
+            contexts: ['selection'],
+            enabled: false
+          });
+        }
       }
       
       // Create Actions
@@ -258,13 +264,24 @@ async function buildContextMenus() {
             contexts: ['selection']
           });
         }
+        
+        // Add separator if there are Custom Actions following
+        if (customActions.length > 0) {
+          chrome.contextMenus.create({
+            id: 'sep-before-custom',
+            parentId: 'kaguya-writer-selection',
+            title: '────────────',
+            contexts: ['selection'],
+            enabled: false
+          });
+        }
       }
       
-      // Custom Actions (user-created)
-      if (customActions.length > 0) {
-        // Add separator if there are default actions
+      // Custom Actions (user-created) - add separator if no Create Actions but there are previous sections
+      else if (customActions.length > 0) {
+        // Add separator if there are default actions before custom actions
         if (quickActions.length > 0 || rewriteActions.length > 0 || toneActions.length > 0 || 
-            lengthActions.length > 0 || createActions.length > 0) {
+            lengthActions.length > 0) {
           chrome.contextMenus.create({
             id: 'sep-before-custom',
             parentId: 'kaguya-writer-selection',
