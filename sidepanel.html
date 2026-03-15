@@ -18,7 +18,7 @@
     <nav class="tabs">
       <button class="tab-btn active" data-tab="chat">Chat</button>
       <button class="tab-btn" data-tab="settings">Settings</button>
-      <button class="tab-btn" data-tab="actions">Actions</button>
+      <button class="tab-btn" data-tab="shoin">Shoin</button>
     </nav>
 
     <!-- Chat Tab -->
@@ -128,47 +128,121 @@
       </div>
     </section>
 
-    <!-- Action Studio Tab -->
-    <section id="actions" class="tab-content">
-      <div class="card">
-        <h2>Dynamic Action Studio</h2>
-        <p class="description">Create custom actions for the context menu.</p>
+    <!-- Shoin (Scriptorium) Tab -->
+    <section id="shoin" class="tab-content">
+      <!-- Scrolls List View -->
+      <div id="scrollsView" class="shoin-view active">
+        <div class="shoin-header">
+          <div class="shoin-title">
+            <h2>My Scrolls</h2>
+            <span class="info-tooltip" title="Scrolls are custom actions that appear in your right-click menu">ⓘ</span>
+          </div>
+          <button id="newScrollBtn" class="btn btn-primary btn-pill">
+            <span class="btn-icon">+</span>
+            New Scroll
+          </button>
+        </div>
         
-        <div class="action-form">
-          <div class="form-group">
-            <label for="actionLabel">Action Name</label>
-            <input type="text" id="actionLabel" placeholder="e.g., Professional Polish">
-          </div>
+        <div id="scrollsList" class="scrolls-list">
+          <!-- Scrolls rendered here -->
+        </div>
+        
+        <div class="shoin-footer">
+          <button id="resetScrolls" class="btn-reset">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+              <path d="M3 3v5h5"/>
+            </svg>
+            Reset to defaults
+          </button>
+        </div>
+      </div>
 
-          <div class="form-group">
-            <label for="actionMode">Mode</label>
-            <select id="actionMode">
-              <option value="rewrite">Rewrite (Replace selected text)</option>
-              <option value="create">Create (Open in chat)</option>
-            </select>
-          </div>
+      <!-- Crafting Table View -->
+      <div id="craftingView" class="shoin-view">
+        <div class="crafting-header">
+          <button id="backToScrolls" class="btn btn-text">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+            Back to Scrolls
+          </button>
+        </div>
+        
+        <div class="card crafting-card">
+          <h2>Crafting Table</h2>
+          <p class="description">Create custom scrolls for the context menu.</p>
+          
+          <div class="crafting-form">
+            <div class="form-group">
+              <label for="scrollName">Scroll Name</label>
+              <input type="text" id="scrollName" placeholder="e.g., Professional Polish">
+            </div>
 
-          <div class="form-group">
-            <label for="actionPrompt">Prompt Template</label>
-            <textarea id="actionPrompt" rows="4" placeholder="e.g., Rewrite the following text to be more professional: {{text}}
+            <div class="form-group">
+              <label for="scrollMode">Mode</label>
+              <select id="scrollMode">
+                <option value="rewrite">Rewrite (Replace selected text)</option>
+                <option value="create">Create (Open in chat)</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="scrollPrompt">Prompt Template</label>
+              <textarea id="scrollPrompt" rows="6" placeholder="e.g., Rewrite the following text to be more professional: {{text}}
 
 Use {{text}} as a placeholder for the selected text."></textarea>
+            </div>
+
+            <div class="crafting-actions">
+              <button id="craftScrollBtn" class="btn btn-primary btn-large">Craft Scroll</button>
+              <span id="craftingStatus" class="crafting-status"></span>
+            </div>
           </div>
-
-          <button id="addAction" class="btn btn-primary">Add Action</button>
         </div>
       </div>
 
-      <div class="card">
-        <h3>Your Actions</h3>
-        <div id="actionsList" class="actions-list">
-          <p class="empty-state">No custom actions yet. Create one above!</p>
+      <!-- Edit Scroll View -->
+      <div id="editView" class="shoin-view">
+        <div class="crafting-header">
+          <button id="backToScrollsEdit" class="btn btn-text">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+            Back to Scrolls
+          </button>
         </div>
-      </div>
+        
+        <div class="card crafting-card">
+          <h2>Edit Scroll</h2>
+          <p class="description">Modify your existing scroll.</p>
+          
+          <div class="crafting-form">
+            <input type="hidden" id="editScrollId">
+            <div class="form-group">
+              <label for="editScrollName">Scroll Name</label>
+              <input type="text" id="editScrollName" placeholder="e.g., Professional Polish">
+            </div>
 
-      <div class="card danger-zone">
-        <h3>Reset</h3>
-        <button id="resetActions" class="btn btn-danger">Reset to Default Actions</button>
+            <div class="form-group">
+              <label for="editScrollMode">Mode</label>
+              <select id="editScrollMode">
+                <option value="rewrite">Rewrite (Replace selected text)</option>
+                <option value="create">Create (Open in chat)</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="editScrollPrompt">Prompt Template</label>
+              <textarea id="editScrollPrompt" rows="6" placeholder="Use {{text}} as a placeholder for the selected text."></textarea>
+            </div>
+
+            <div class="crafting-actions">
+              <button id="saveScrollEdit" class="btn btn-primary btn-large">Save Changes</button>
+              <button id="deleteScrollEdit" class="btn btn-danger">Delete Scroll</button>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
   </div>

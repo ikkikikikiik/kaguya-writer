@@ -62,8 +62,8 @@ chrome.runtime.onInstalled.addListener(async () => {
 // Also run on service worker startup (for reloads)
 chrome.runtime.onStartup.addListener(async () => {
   console.log('[Kaguya Writer] Extension started');
-  await buildContextMenus();
   await refreshCache();
+  await buildContextMenus();
 });
 
 // Refresh cache when storage changes
@@ -75,6 +75,15 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
     }
   }
 });
+
+// Ensure cache is fresh before handling clicks
+// Service workers can be terminated/restarted at any time
+async function ensureCacheLoaded() {
+  if (!actionsCache) {
+    await refreshCache();
+  }
+  return actionsCache || DEFAULT_ACTIONS;
+}
 
 // Refresh cache from storage
 async function refreshCache() {
@@ -116,9 +125,11 @@ async function initializeStorage() {
 // Handle messages from sidepanel
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'REFRESH_MENUS') {
-    buildContextMenus();
-    refreshCache();
-    sendResponse({ success: true });
+    refreshCache().then(() => {
+      buildContextMenus();
+      sendResponse({ success: true });
+    });
+    return true;
   } else if (message.type === 'SIDE_PANEL_OPEN') {
     sidePanelOpen = true;
     sendResponse({ received: true });
@@ -134,13 +145,16 @@ async function buildContextMenus() {
   try {
     await chrome.contextMenus.removeAll();
     
-    const actions = actionsCache || DEFAULT_ACTIONS;
-    const quickActions = actions.filter(a => a.category === 'quick');
-    const rewriteActions = actions.filter(a => a.category === 'rewrite');
-    const toneActions = actions.filter(a => a.category === 'tone');
-    const lengthActions = actions.filter(a => a.category === 'length');
-    const createActions = actions.filter(a => a.category === 'create');
-    const customActions = actions.filter(a => a.category === 'custom' || !a.category);
+    // Ensure cache is loaded before building menus
+    const actions = await ensureCacheLoaded();
+    // Filter out hidden actions from context menu
+    const visibleActions = actions.filter(a => !a.hidden);
+    const quickActions = visibleActions.filter(a => a.category === 'quick');
+    const rewriteActions = visibleActions.filter(a => a.category === 'rewrite');
+    const toneActions = visibleActions.filter(a => a.category === 'tone');
+    const lengthActions = visibleActions.filter(a => a.category === 'length');
+    const createActions = visibleActions.filter(a => a.category === 'create');
+    const customActions = visibleActions.filter(a => a.category === 'custom' || !a.category);
     
     // Create parent menu for page context (no selection - create mode only)
     const pageContextActions = [...quickActions, ...createActions, ...customActions.filter(a => a.mode === 'create')];
@@ -294,14 +308,15 @@ async function getActiveProfile() {
 }
 
 // Handle context menu clicks
-chrome.contextMenus.onClicked.addListener((info, tab) => {
+chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (info.menuItemId === 'kaguya-writer-page' || 
       info.menuItemId === 'kaguya-writer-selection' ||
       info.menuItemId.startsWith('sep-')) {
     return;
   }
   
-  const actions = actionsCache || DEFAULT_ACTIONS;
+  // Ensure cache is loaded (service worker may have been restarted)
+  const actions = await ensureCacheLoaded();
   
   let actionId = info.menuItemId;
   if (actionId.startsWith('page-')) {
@@ -314,6 +329,9 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   
   if (!action) {
     console.error('[Kaguya Writer] Action not found:', actionId, 'from', info.menuItemId);
+    // Try to refresh cache and rebuild menus for next time
+    await refreshCache();
+    await buildContextMenus();
     return;
   }
   

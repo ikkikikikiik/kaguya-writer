@@ -114,21 +114,26 @@ function showGeneratingToast() {
   
   toast.style.cssText = `
     position: fixed;
-    bottom: 20px;
-    right: 20px;
-    background: #1a1a2e;
-    border: 1px solid #30363d;
-    color: #c9d1d9;
-    padding: 12px 20px;
-    border-radius: 8px;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    bottom: 24px;
+    right: 24px;
+    background: rgba(100, 200, 255, 0.08);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(100, 220, 255, 0.2);
+    border-radius: 16px;
+    color: #64dcff;
+    padding: 16px 24px;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
     font-size: 14px;
+    font-weight: 500;
     z-index: 2147483647;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 4px 20px rgba(100, 200, 255, 0.15), 0 8px 32px rgba(0, 0, 0, 0.3);
     display: flex;
     align-items: center;
     gap: 12px;
-    animation: kaguya-toast-in 0.3s ease;
+    animation: kaguya-toast-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    letter-spacing: 0.01em;
   `;
   
   // Add spinner styles if not present
@@ -137,24 +142,33 @@ function showGeneratingToast() {
     style.id = 'kaguya-writer-styles';
     style.textContent = `
       @keyframes kaguya-toast-in {
-        from { transform: translateY(100px); opacity: 0; }
-        to { transform: translateY(0); opacity: 1; }
+        from { transform: translateY(100px) scale(0.95); opacity: 0; }
+        to { transform: translateY(0) scale(1); opacity: 1; }
       }
       @keyframes kaguya-toast-out {
-        from { transform: translateY(0); opacity: 1; }
-        to { transform: translateY(100px); opacity: 0; }
+        from { transform: translateY(0) scale(1); opacity: 1; }
+        to { transform: translateY(100px) scale(0.95); opacity: 0; }
+      }
+      @keyframes toast-in {
+        from { transform: translateY(100px) scale(0.95); opacity: 0; }
+        to { transform: translateY(0) scale(1); opacity: 1; }
+      }
+      @keyframes toast-out {
+        from { transform: translateY(0) scale(1); opacity: 1; }
+        to { transform: translateY(100px) scale(0.95); opacity: 0; }
       }
       @keyframes kaguya-spin {
         to { transform: rotate(360deg); }
       }
       .kaguya-spinner {
         display: inline-block;
-        width: 16px;
-        height: 16px;
-        border: 2px solid #30363d;
-        border-top-color: #58a6ff;
+        width: 18px;
+        height: 18px;
+        border: 2px solid rgba(100, 220, 255, 0.2);
+        border-top-color: #64dcff;
         border-radius: 50%;
         animation: kaguya-spin 0.8s linear infinite;
+        box-shadow: 0 0 10px rgba(100, 200, 255, 0.3);
       }
       .kaguya-dots::after {
         content: '';
@@ -303,7 +317,7 @@ function replaceInEditableElement(element, range, newText) {
   return false;
 }
 
-// Show toast notification
+// Show toast notification - Liquid Glass style
 function showToast(message, type = 'info', duration = 3000) {
   // Remove existing toast
   const existing = document.getElementById('kaguya-writer-toast');
@@ -316,35 +330,58 @@ function showToast(message, type = 'info', duration = 3000) {
   toast.id = 'kaguya-writer-toast';
   toast.textContent = message;
   
-  // Styles
-  const colors = {
-    success: '#238636',
-    info: '#58a6ff',
-    error: '#da3633'
+  // Glass morphism colors based on type
+  const glassStyles = {
+    success: {
+      bg: 'rgba(100, 255, 150, 0.12)',
+      border: 'rgba(100, 255, 150, 0.25)',
+      glow: '0 4px 20px rgba(100, 255, 150, 0.15)',
+      text: '#6bff9e'
+    },
+    info: {
+      bg: 'rgba(100, 200, 255, 0.12)',
+      border: 'rgba(100, 220, 255, 0.25)',
+      glow: '0 4px 20px rgba(100, 200, 255, 0.15)',
+      text: '#64dcff'
+    },
+    error: {
+      bg: 'rgba(255, 100, 100, 0.12)',
+      border: 'rgba(255, 100, 100, 0.25)',
+      glow: '0 4px 20px rgba(255, 100, 100, 0.15)',
+      text: '#ff6b6b'
+    }
   };
+  
+  const style = glassStyles[type] || glassStyles.info;
   
   toast.style.cssText = `
     position: fixed;
-    bottom: 20px;
-    right: 20px;
-    background: ${colors[type] || colors.info};
-    color: white;
-    padding: 12px 20px;
-    border-radius: 6px;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    bottom: 24px;
+    right: 24px;
+    background: ${style.bg};
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid ${style.border};
+    border-radius: 16px;
+    color: ${style.text};
+    padding: 16px 24px;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
     font-size: 14px;
+    font-weight: 500;
     z-index: 2147483647;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    animation: kaguya-toast-in 0.3s ease;
-    max-width: 300px;
+    box-shadow: ${style.glow}, 0 8px 32px rgba(0, 0, 0, 0.3);
+    animation: toast-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    max-width: 320px;
     word-wrap: break-word;
+    letter-spacing: 0.01em;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
   `;
   
   document.body.appendChild(toast);
   
-  // Auto remove
+  // Auto remove with smooth exit
   setTimeout(() => {
-    toast.style.animation = 'kaguya-toast-out 0.3s ease forwards';
+    toast.style.animation = 'toast-out 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards';
     setTimeout(() => toast.remove(), 300);
   }, duration);
 }

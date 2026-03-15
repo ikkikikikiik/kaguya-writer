@@ -650,6 +650,47 @@ body {
   box-shadow: 0 0 0 3px rgba(100, 200, 255, 0.1);
 }
 
+/* Error state for form inputs */
+.form-group input.error,
+.form-group textarea.error {
+  border-color: rgba(255, 100, 100, 0.5);
+  box-shadow: 0 0 0 3px rgba(255, 100, 100, 0.15);
+  background: rgba(255, 100, 100, 0.05);
+}
+
+.form-group input.error:focus,
+.form-group textarea.error:focus {
+  border-color: rgba(255, 100, 100, 0.6);
+  box-shadow: 0 0 0 3px rgba(255, 100, 100, 0.2);
+}
+
+.form-group .error-message {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #ff6b6b;
+  margin-top: 6px;
+  font-weight: 500;
+  animation: slideIn 0.2s ease;
+}
+
+.form-group .error-message::before {
+  content: '⚠';
+  font-size: 11px;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .form-group textarea {
   resize: vertical;
   min-height: 80px;
@@ -898,6 +939,426 @@ body {
 .action-btn.delete:hover {
   background: rgba(220, 50, 50, 0.2);
   color: #ff6b6b;
+}
+
+/* ===== SHOIN (SCRIPTS) ===== */
+.shoin-view {
+  display: none;
+  animation: fadeIn 0.3s ease;
+  padding: 16px;
+}
+
+.shoin-view.active {
+  display: block;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Shoin Header */
+.shoin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  margin-top: 8px;
+  padding: 0 4px;
+}
+
+.shoin-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.shoin-title h2 {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.info-tooltip {
+  color: var(--text-tertiary);
+  font-size: 14px;
+  cursor: help;
+  transition: color 0.2s ease;
+}
+
+.info-tooltip:hover {
+  color: var(--flow-cyan);
+}
+
+/* Pill Button */
+.btn-pill {
+  border-radius: 24px;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  font-size: 13px;
+  background: linear-gradient(135deg, rgba(100, 200, 255, 0.2), rgba(100, 200, 255, 0.1));
+  border: 1px solid rgba(100, 220, 255, 0.3);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition: all 0.2s var(--viscous);
+}
+
+.btn-pill:hover {
+  background: linear-gradient(135deg, rgba(100, 200, 255, 0.3), rgba(100, 200, 255, 0.15));
+  border-color: rgba(100, 220, 255, 0.5);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(100, 200, 255, 0.2);
+}
+
+.btn-icon {
+  font-size: 18px;
+  line-height: 1;
+}
+
+/* Scrolls List */
+.scrolls-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.scroll-card {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  transition: all 0.25s var(--viscous);
+  cursor: pointer;
+}
+
+.scroll-card:hover {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.04));
+  border-color: rgba(100, 220, 255, 0.25);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2), 0 0 20px rgba(100, 200, 255, 0.1);
+}
+
+/* Scroll Avatar */
+.scroll-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 600;
+  color: white;
+  flex-shrink: 0;
+  text-transform: uppercase;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* Avatar color variations */
+.scroll-avatar.cyan {
+  background: linear-gradient(135deg, #00d4aa, #00a8e8);
+}
+
+.scroll-avatar.magenta {
+  background: linear-gradient(135deg, #ff6b9d, #c850c0);
+}
+
+.scroll-avatar.amber {
+  background: linear-gradient(135deg, #f5af19, #f12711);
+}
+
+.scroll-avatar.purple {
+  background: linear-gradient(135deg, #8b5cf6, #6366f1);
+}
+
+.scroll-avatar.emerald {
+  background: linear-gradient(135deg, #10b981, #059669);
+}
+
+.scroll-avatar.rose {
+  background: linear-gradient(135deg, #fb7185, #e11d48);
+}
+
+.scroll-avatar.grayscale {
+  background: linear-gradient(135deg, #4a4a5a, #2a2a3a);
+  opacity: 0.6;
+}
+
+/* Avatar overlay for hide/unhide */
+.scroll-avatar {
+  position: relative;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.scroll-avatar:hover {
+  transform: scale(1.05);
+}
+
+.avatar-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 12px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.scroll-avatar:hover .avatar-overlay {
+  opacity: 1;
+}
+
+.avatar-overlay svg {
+  color: white;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
+}
+
+/* Hidden scroll styling */
+.scroll-card.hidden-scroll {
+  opacity: 0.7;
+}
+
+.scroll-card.hidden-scroll .scroll-name {
+  color: var(--text-tertiary);
+}
+
+.scroll-badge.hidden-badge {
+  background: rgba(150, 150, 150, 0.15);
+  color: var(--text-tertiary);
+}
+
+/* Scroll Info */
+.scroll-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.scroll-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+  letter-spacing: -0.01em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.scroll-badge {
+  font-size: 10px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.scroll-card.default-scroll .scroll-badge {
+  background: rgba(100, 200, 255, 0.15);
+  color: var(--flow-cyan);
+}
+
+.scroll-preview {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-style: italic;
+}
+
+/* Scroll Actions */
+.scroll-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  opacity: 0.6;
+  transition: opacity 0.2s ease;
+}
+
+.scroll-card:hover .scroll-actions {
+  opacity: 1;
+}
+
+.scroll-action-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.scroll-action-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+}
+
+.scroll-action-btn.edit:hover {
+  background: rgba(100, 200, 255, 0.15);
+  color: var(--flow-cyan);
+}
+
+.scroll-action-btn.delete:hover {
+  background: rgba(255, 100, 100, 0.15);
+  color: #ff6b6b;
+}
+
+/* Empty State */
+.scrolls-empty {
+  text-align: center;
+  padding: 48px 24px;
+  color: var(--text-tertiary);
+}
+
+.scrolls-empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.scrolls-empty h3 {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.scrolls-empty p {
+  font-size: 13px;
+  margin: 0;
+}
+
+/* Crafting Table */
+.crafting-header {
+  margin-bottom: 16px;
+  margin-top: 8px;
+}
+
+.btn-text {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.btn-text:hover {
+  color: var(--flow-cyan);
+  background: rgba(100, 200, 255, 0.08);
+}
+
+.crafting-card {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  padding: 24px;
+}
+
+.crafting-card h2 {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 8px 0;
+}
+
+.crafting-card .description {
+  color: var(--text-tertiary);
+  font-size: 14px;
+  margin-bottom: 24px;
+}
+
+.crafting-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.crafting-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.btn-large {
+  padding: 14px 28px;
+  font-size: 15px;
+  font-weight: 600;
+  border-radius: 12px;
+}
+
+.crafting-status {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  font-weight: 500;
+}
+
+.crafting-status.error {
+  color: #ff6b6b;
+}
+
+.crafting-status.success {
+  color: #6bff9e;
+}
+
+/* Shoin Footer */
+.shoin-footer {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--glass-border);
+  display: flex;
+  justify-content: center;
+}
+
+.btn-reset {
+  background: transparent;
+  border: none;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+  opacity: 0.7;
+}
+
+.btn-reset:hover {
+  color: #ff6b6b;
+  background: rgba(255, 100, 100, 0.1);
+  opacity: 1;
 }
 
 /* Status Messages */

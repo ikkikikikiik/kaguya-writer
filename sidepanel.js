@@ -27,14 +27,16 @@ const DEFAULT_ACTIONS = [
     label: 'Summarize',
     prompt_template: 'Summarize the following text concisely.\n\n{{text}}',
     mode: 'create',
-    category: 'quick'
+    category: 'quick',
+    createdAt: 1000
   },
   {
     id: 'explain',
     label: 'Explain',
     prompt_template: 'Explain the following text in simple terms.\n\n{{text}}',
     mode: 'create',
-    category: 'quick'
+    category: 'quick',
+    createdAt: 2000
   },
   
   // Rewrite Actions
@@ -43,14 +45,16 @@ const DEFAULT_ACTIONS = [
     label: 'Paraphrase',
     prompt_template: 'Paraphrase the following text using different words while keeping the same meaning.\n\n{{text}}',
     mode: 'rewrite',
-    category: 'rewrite'
+    category: 'rewrite',
+    createdAt: 3000
   },
   {
     id: 'improve',
     label: 'Improve',
     prompt_template: 'Improve the following text by fixing grammar, clarity, and flow.\n\n{{text}}',
     mode: 'rewrite',
-    category: 'rewrite'
+    category: 'rewrite',
+    createdAt: 4000
   },
   
   // Change Tone Submenu
@@ -59,35 +63,40 @@ const DEFAULT_ACTIONS = [
     label: 'Academic',
     prompt_template: 'Rewrite the following text in an academic tone.\n\n{{text}}',
     mode: 'rewrite',
-    category: 'tone'
+    category: 'tone',
+    createdAt: 5000
   },
   {
     id: 'tone-professional',
     label: 'Professional',
     prompt_template: 'Rewrite the following text in a professional tone.\n\n{{text}}',
     mode: 'rewrite',
-    category: 'tone'
+    category: 'tone',
+    createdAt: 6000
   },
   {
     id: 'tone-persuasive',
     label: 'Persuasive',
     prompt_template: 'Rewrite the following text to be more persuasive and compelling.\n\n{{text}}',
     mode: 'rewrite',
-    category: 'tone'
+    category: 'tone',
+    createdAt: 7000
   },
   {
     id: 'tone-casual',
     label: 'Casual',
     prompt_template: 'Rewrite the following text in a casual, conversational tone.\n\n{{text}}',
     mode: 'rewrite',
-    category: 'tone'
+    category: 'tone',
+    createdAt: 8000
   },
   {
     id: 'tone-funny',
     label: 'Funny',
     prompt_template: 'Rewrite the following text to be humorous and entertaining.\n\n{{text}}',
     mode: 'rewrite',
-    category: 'tone'
+    category: 'tone',
+    createdAt: 9000
   },
   
   // Change Length Submenu
@@ -96,14 +105,16 @@ const DEFAULT_ACTIONS = [
     label: 'Make shorter',
     prompt_template: 'Rewrite the following text to be more concise and shorter.\n\n{{text}}',
     mode: 'rewrite',
-    category: 'length'
+    category: 'length',
+    createdAt: 10000
   },
   {
     id: 'length-longer',
     label: 'Make longer',
     prompt_template: 'Expand the following text with more detail and depth.\n\n{{text}}',
     mode: 'rewrite',
-    category: 'length'
+    category: 'length',
+    createdAt: 11000
   },
   
   // Create Actions
@@ -112,14 +123,16 @@ const DEFAULT_ACTIONS = [
     label: 'Tagline',
     prompt_template: 'Generate a catchy tagline based on the following text.\n\n{{text}}',
     mode: 'create',
-    category: 'create'
+    category: 'create',
+    createdAt: 12000
   },
   {
     id: 'social-media',
     label: 'Social media post',
     prompt_template: 'Create a social media post based on the following text.\n\n{{text}}',
     mode: 'create',
-    category: 'create'
+    category: 'create',
+    createdAt: 13000
   }
 ];
 
@@ -154,13 +167,26 @@ const elements = {
   newProfile: document.getElementById('newProfile'),
   settingsStatus: document.getElementById('settingsStatus'),
   
-  // Actions
-  actionLabel: document.getElementById('actionLabel'),
-  actionMode: document.getElementById('actionMode'),
-  actionPrompt: document.getElementById('actionPrompt'),
-  addAction: document.getElementById('addAction'),
-  actionsList: document.getElementById('actionsList'),
-  resetActions: document.getElementById('resetActions')
+  // Shoin (Scrolls)
+  scrollsView: document.getElementById('scrollsView'),
+  craftingView: document.getElementById('craftingView'),
+  editView: document.getElementById('editView'),
+  newScrollBtn: document.getElementById('newScrollBtn'),
+  backToScrolls: document.getElementById('backToScrolls'),
+  backToScrollsEdit: document.getElementById('backToScrollsEdit'),
+  scrollsList: document.getElementById('scrollsList'),
+  scrollName: document.getElementById('scrollName'),
+  scrollMode: document.getElementById('scrollMode'),
+  scrollPrompt: document.getElementById('scrollPrompt'),
+  craftScrollBtn: document.getElementById('craftScrollBtn'),
+  craftingStatus: document.getElementById('craftingStatus'),
+  editScrollId: document.getElementById('editScrollId'),
+  editScrollName: document.getElementById('editScrollName'),
+  editScrollMode: document.getElementById('editScrollMode'),
+  editScrollPrompt: document.getElementById('editScrollPrompt'),
+  saveScrollEdit: document.getElementById('saveScrollEdit'),
+  deleteScrollEdit: document.getElementById('deleteScrollEdit'),
+  resetScrolls: document.getElementById('resetScrolls')
 };
 
 // State
@@ -212,9 +238,34 @@ function setupEventListeners() {
   elements.newProfile.addEventListener('click', createNewProfile);
   elements.deleteProfile.addEventListener('click', deleteCurrentProfile);
   
-  // Actions
-  elements.addAction.addEventListener('click', addAction);
-  elements.resetActions.addEventListener('click', resetActions);
+  // Shoin (Scrolls) - Navigation
+  elements.newScrollBtn.addEventListener('click', () => showShoinView('crafting'));
+  elements.backToScrolls.addEventListener('click', () => showShoinView('scrolls'));
+  elements.backToScrollsEdit.addEventListener('click', () => showShoinView('scrolls'));
+  
+  // Shoin - Crafting
+  elements.craftScrollBtn.addEventListener('click', craftScroll);
+  
+  // Shoin - Edit
+  elements.saveScrollEdit.addEventListener('click', saveEditedScroll);
+  elements.deleteScrollEdit.addEventListener('click', deleteEditedScroll);
+  
+  // Shoin - Reset
+  elements.resetScrolls.addEventListener('click', resetScrolls);
+  
+  // Clear validation errors when user types
+  elements.scrollName.addEventListener('input', () => clearFieldError(elements.scrollName));
+  elements.scrollPrompt.addEventListener('input', () => clearFieldError(elements.scrollPrompt));
+  elements.editScrollName.addEventListener('input', () => clearFieldError(elements.editScrollName));
+  elements.editScrollPrompt.addEventListener('input', () => clearFieldError(elements.editScrollPrompt));
+}
+
+// Clear field error helper
+function clearFieldError(inputElement) {
+  inputElement.classList.remove('error');
+  const formGroup = inputElement.closest('.form-group');
+  const errorEl = formGroup.querySelector('.error-message');
+  if (errorEl) errorEl.remove();
 }
 
 // Auto-resize textarea
@@ -814,85 +865,340 @@ async function loadActions() {
   renderActionsList();
 }
 
-// Render actions list
+// Render actions list - kept for backward compatibility, delegates to renderScrollsList
 function renderActionsList() {
-  if (currentActions.length === 0) {
-    elements.actionsList.innerHTML = '<p class="empty-state">No custom actions yet. Create one above!</p>';
+  renderScrollsList();
+}
+
+
+
+// Show field-level error with visual feedback
+function showFieldError(inputElement, message) {
+  inputElement.classList.add('error');
+  
+  // Find or create error message element
+  const formGroup = inputElement.closest('.form-group');
+  let errorEl = formGroup.querySelector('.error-message');
+  
+  if (!errorEl) {
+    errorEl = document.createElement('span');
+    errorEl.className = 'error-message';
+    formGroup.appendChild(errorEl);
+  }
+  
+  errorEl.textContent = message;
+}
+
+// Show crafting status message
+function showCraftingStatus(message, type = '') {
+  elements.craftingStatus.textContent = message;
+  elements.craftingStatus.className = 'crafting-status' + (type ? ' ' + type : '');
+  
+  if (type === 'success') {
+    setTimeout(() => {
+      elements.craftingStatus.textContent = '';
+      elements.craftingStatus.className = 'crafting-status';
+    }, 3000);
+  }
+}
+
+// ==================== SHOIN (SCROLLS) ====================
+
+// Avatar color palette for scroll cards
+const AVATAR_COLORS = ['cyan', 'magenta', 'amber', 'purple', 'emerald', 'rose'];
+
+function getAvatarColor(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
+
+// Show specific Shoin view
+function showShoinView(view) {
+  elements.scrollsView.classList.remove('active');
+  elements.craftingView.classList.remove('active');
+  elements.editView.classList.remove('active');
+  
+  if (view === 'scrolls') {
+    elements.scrollsView.classList.add('active');
+    renderScrollsList();
+  } else if (view === 'crafting') {
+    elements.craftingView.classList.add('active');
+    clearCraftingForm();
+  } else if (view === 'edit') {
+    elements.editView.classList.add('active');
+  }
+}
+
+// Clear crafting form
+function clearCraftingForm() {
+  elements.scrollName.value = '';
+  elements.scrollMode.value = 'rewrite';
+  elements.scrollPrompt.value = '';
+  clearFieldError(elements.scrollName);
+  clearFieldError(elements.scrollPrompt);
+  elements.craftingStatus.textContent = '';
+}
+
+// Render scrolls list with card UI - shows ALL scrolls (default + custom), newest first
+function renderScrollsList() {
+  // Sort: visible scrolls first (by updatedAt/createdAt), then hidden ones
+  // For scrolls without timestamps, extract timestamp from ID or use 0
+  const sortedActions = [...currentActions].sort((a, b) => {
+    // Hidden scrolls go to the bottom
+    if (a.hidden && !b.hidden) return 1;
+    if (!a.hidden && b.hidden) return -1;
+    
+    // Both visible or both hidden - sort by time
+    const timeA = a.updatedAt || a.createdAt || extractTimestampFromId(a.id) || 0;
+    const timeB = b.updatedAt || b.createdAt || extractTimestampFromId(b.id) || 0;
+    return timeB - timeA;
+  });
+  
+  if (sortedActions.length === 0) {
+    elements.scrollsList.innerHTML = `
+      <div class="scrolls-empty">
+        <div class="scrolls-empty-icon">📜</div>
+        <h3>No Scrolls Yet</h3>
+        <p>Create your first scroll to get started</p>
+      </div>
+    `;
     return;
   }
   
-  elements.actionsList.innerHTML = currentActions.map(action => `
-    <div class="action-item" data-id="${action.id}">
-      <div class="action-info">
-        <div class="action-header">
-          <span class="action-name">${escapeHtml(action.label)}</span>
-          <span class="action-mode ${action.mode}">${action.mode}</span>
-          ${action.category ? `<span class="action-category">${action.category}</span>` : ''}
+  elements.scrollsList.innerHTML = sortedActions.map(action => {
+    const avatarColor = getAvatarColor(action.label);
+    const firstLetter = action.label.charAt(0).toUpperCase();
+    const isDefault = DEFAULT_ACTIONS.find(d => d.id === action.id);
+    
+    return `
+      <div class="scroll-card ${isDefault ? 'default-scroll' : ''} ${action.hidden ? 'hidden-scroll' : ''}" data-id="${action.id}">
+        <div class="scroll-avatar ${action.hidden ? 'grayscale' : avatarColor}" data-id="${action.id}" title="${action.hidden ? 'Unhide scroll' : 'Hide scroll'}">
+          ${firstLetter}
+          <div class="avatar-overlay">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              ${action.hidden 
+                ? '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>' 
+                : '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>'}
+            </svg>
+          </div>
         </div>
-        <div class="action-prompt" title="${escapeHtml(action.prompt_template)}">${escapeHtml(action.prompt_template)}</div>
+        <div class="scroll-info">
+          <div class="scroll-name">${escapeHtml(action.label)} ${isDefault ? '<span class="scroll-badge">Default</span>' : ''} ${action.hidden ? '<span class="scroll-badge hidden-badge">Hidden</span>' : ''}</div>
+          <div class="scroll-preview">${escapeHtml(action.prompt_template.substring(0, 60))}${action.prompt_template.length > 60 ? '...' : ''}</div>
+        </div>
+        <div class="scroll-actions">
+          <button class="scroll-action-btn edit" title="Edit" data-id="${action.id}">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+          </button>
+          ${isDefault ? `
+          <button class="scroll-action-btn delete" title="Reset to default" data-id="${action.id}">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+              <path d="M3 3v5h5"/>
+            </svg>
+          </button>
+          ` : `
+          <button class="scroll-action-btn delete" title="Delete" data-id="${action.id}">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+            </svg>
+          </button>
+          `}
+        </div>
       </div>
-      <div class="action-actions">
-        <button class="action-btn delete" title="Delete" data-id="${action.id}">✕</button>
-      </div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
   
-  document.querySelectorAll('.action-btn.delete').forEach(btn => {
-    btn.addEventListener('click', (e) => deleteAction(e.target.dataset.id));
+  // Attach event listeners
+  document.querySelectorAll('.scroll-action-btn.edit').forEach(btn => {
+    btn.addEventListener('click', (e) => openEditScroll(e.currentTarget.dataset.id));
+  });
+  
+  document.querySelectorAll('.scroll-action-btn.delete').forEach(btn => {
+    btn.addEventListener('click', (e) => deleteScroll(e.currentTarget.dataset.id));
+  });
+  
+  // Avatar click to toggle hidden state
+  document.querySelectorAll('.scroll-avatar').forEach(avatar => {
+    avatar.addEventListener('click', (e) => toggleScrollHidden(e.currentTarget.dataset.id));
   });
 }
 
-// Add action
-async function addAction() {
-  const label = elements.actionLabel.value.trim();
-  const mode = elements.actionMode.value;
-  const prompt = elements.actionPrompt.value.trim();
+// Extract timestamp from scroll ID (format: "action-123456789" or "scroll-123456789")
+function extractTimestampFromId(id) {
+  if (!id) return 0;
+  const match = id.match(/-(\d+)$/);
+  return match ? parseInt(match[1], 10) : 0;
+}
+
+// Craft new scroll
+async function craftScroll() {
+  const name = elements.scrollName.value.trim();
+  const mode = elements.scrollMode.value;
+  const prompt = elements.scrollPrompt.value.trim();
   
-  if (!label || !prompt) {
-    showStatus(elements.settingsStatus, 'Please fill in all fields', 'error');
+  // Clear previous errors
+  clearFieldError(elements.scrollName);
+  clearFieldError(elements.scrollPrompt);
+  
+  let hasError = false;
+  
+  if (!name) {
+    showFieldError(elements.scrollName, 'Scroll name is required');
+    hasError = true;
+  }
+  
+  if (!prompt) {
+    showFieldError(elements.scrollPrompt, 'Prompt template is required');
+    hasError = true;
+  } else if (!prompt.includes('{{text}}')) {
+    showFieldError(elements.scrollPrompt, 'Prompt must include {{text}} placeholder');
+    hasError = true;
+  }
+  
+  if (hasError) {
+    showCraftingStatus('Please fix the errors above', 'error');
     return;
   }
   
-  if (!prompt.includes('{{text}}')) {
-    showStatus(elements.settingsStatus, 'Prompt must include {{text}} placeholder', 'error');
-    return;
-  }
-  
-  const newAction = {
-    id: 'action-' + Date.now(),
-    label,
+  const now = Date.now();
+  const newScroll = {
+    id: 'scroll-' + now,
+    label: name,
     mode,
     prompt_template: prompt,
-    category: 'custom'
+    category: 'custom',
+    createdAt: now
   };
   
-  currentActions.push(newAction);
+  currentActions.push(newScroll);
   await chrome.storage.local.set({ actions: currentActions });
   
-  elements.actionLabel.value = '';
-  elements.actionPrompt.value = '';
+  elements.scrollName.value = '';
+  elements.scrollPrompt.value = '';
   
-  renderActionsList();
-  showStatus(elements.settingsStatus, 'Action added!', 'success');
+  showShoinView('scrolls');
+  renderScrollsList();
+  showCraftingStatus('Scroll crafted successfully!', 'success');
   chrome.runtime.sendMessage({ type: 'REFRESH_MENUS' }).catch(() => {});
 }
 
-// Delete action
-async function deleteAction(id) {
-  currentActions = currentActions.filter(a => a.id !== id);
+// Open edit scroll view
+function openEditScroll(id) {
+  const scroll = currentActions.find(a => a.id === id);
+  if (!scroll) return;
+  
+  elements.editScrollId.value = scroll.id;
+  elements.editScrollName.value = scroll.label;
+  elements.editScrollMode.value = scroll.mode;
+  elements.editScrollPrompt.value = scroll.prompt_template;
+  
+  clearFieldError(elements.editScrollName);
+  clearFieldError(elements.editScrollPrompt);
+  
+  showShoinView('edit');
+}
+
+// Save edited scroll
+async function saveEditedScroll() {
+  const id = elements.editScrollId.value;
+  const name = elements.editScrollName.value.trim();
+  const mode = elements.editScrollMode.value;
+  const prompt = elements.editScrollPrompt.value.trim();
+  
+  clearFieldError(elements.editScrollName);
+  clearFieldError(elements.editScrollPrompt);
+  
+  let hasError = false;
+  
+  if (!name) {
+    showFieldError(elements.editScrollName, 'Scroll name is required');
+    hasError = true;
+  }
+  
+  if (!prompt) {
+    showFieldError(elements.editScrollPrompt, 'Prompt template is required');
+    hasError = true;
+  } else if (!prompt.includes('{{text}}')) {
+    showFieldError(elements.editScrollPrompt, 'Prompt must include {{text}} placeholder');
+    hasError = true;
+  }
+  
+  if (hasError) return;
+  
+  const index = currentActions.findIndex(a => a.id === id);
+  if (index !== -1) {
+    currentActions[index] = { 
+      ...currentActions[index], 
+      label: name, 
+      mode, 
+      prompt_template: prompt,
+      updatedAt: Date.now()
+    };
+    await chrome.storage.local.set({ actions: currentActions });
+    showShoinView('scrolls');
+    renderScrollsList();
+    chrome.runtime.sendMessage({ type: 'REFRESH_MENUS' }).catch(() => {});
+  }
+}
+
+// Delete edited scroll
+async function deleteEditedScroll() {
+  const id = elements.editScrollId.value;
+  await deleteScroll(id);
+  showShoinView('scrolls');
+}
+
+// Toggle scroll hidden state
+async function toggleScrollHidden(id) {
+  const index = currentActions.findIndex(a => a.id === id);
+  if (index === -1) return;
+  
+  currentActions[index].hidden = !currentActions[index].hidden;
   await chrome.storage.local.set({ actions: currentActions });
-  renderActionsList();
+  renderScrollsList();
   chrome.runtime.sendMessage({ type: 'REFRESH_MENUS' }).catch(() => {});
 }
 
-// Reset actions
-async function resetActions() {
-  if (!confirm('Are you sure? This will reset all actions to defaults.')) return;
+// Delete scroll (or reset to default for predefined scrolls)
+async function deleteScroll(id) {
+  const isDefault = DEFAULT_ACTIONS.find(d => d.id === id);
+  
+  if (isDefault) {
+    // Reset default scroll to original
+    if (!confirm(`Reset "${isDefault.label}" to its default settings?`)) return;
+    
+    const index = currentActions.findIndex(a => a.id === id);
+    if (index !== -1) {
+      currentActions[index] = { ...isDefault };
+      await chrome.storage.local.set({ actions: currentActions });
+      renderScrollsList();
+      chrome.runtime.sendMessage({ type: 'REFRESH_MENUS' }).catch(() => {});
+    }
+  } else {
+    // Delete custom scroll
+    if (!confirm('Are you sure you want to delete this scroll?')) return;
+    
+    currentActions = currentActions.filter(a => a.id !== id);
+    await chrome.storage.local.set({ actions: currentActions });
+    renderScrollsList();
+    chrome.runtime.sendMessage({ type: 'REFRESH_MENUS' }).catch(() => {});
+  }
+}
+
+// Reset all scrolls to defaults
+async function resetScrolls() {
+  if (!confirm('Are you sure? This will reset all scrolls to defaults and delete your custom scrolls.')) return;
   
   currentActions = [...DEFAULT_ACTIONS];
   await chrome.storage.local.set({ actions: currentActions });
-  renderActionsList();
-  showStatus(elements.settingsStatus, 'Actions reset to defaults', 'success');
+  renderScrollsList();
   chrome.runtime.sendMessage({ type: 'REFRESH_MENUS' }).catch(() => {});
 }
 
