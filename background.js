@@ -256,34 +256,22 @@ async function buildContextMenus() {
       }
       
       // Create Actions
-      if (createActions.length > 0) {
-        for (const action of createActions) {
-          chrome.contextMenus.create({
-            id: `sel-${action.id}`,
-            parentId: 'kaguya-writer-selection',
-            title: action.label,
-            contexts: ['selection']
-          });
-        }
-        
-        // Add separator if there are Custom Actions following
-        if (customActions.length > 0) {
-          chrome.contextMenus.create({
-            id: 'sep-before-custom',
-            parentId: 'kaguya-writer-selection',
-            title: '────────────',
-            contexts: ['selection'],
-            enabled: false
-          });
-        }
+      for (const action of createActions) {
+        chrome.contextMenus.create({
+          id: `sel-${action.id}`,
+          parentId: 'kaguya-writer-selection',
+          title: action.label,
+          contexts: ['selection']
+        });
       }
       
-      // Custom Actions (user-created) - add separator if no Create Actions but there are previous sections
-      else if (customActions.length > 0) {
-        // Add separator only if Length Actions exist (they don't add one when Create Actions is empty)
-        // OR if any earlier sections exist
-        if (lengthActions.length > 0 || quickActions.length > 0 || rewriteActions.length > 0 || 
-            toneActions.length > 0) {
+      // Add separator before Custom Actions if needed
+      if (customActions.length > 0) {
+        // Check if we need a separator (if Create Actions didn't add one, or if there are earlier sections)
+        const hasEarlierSections = quickActions.length > 0 || rewriteActions.length > 0 || 
+                                   toneActions.length > 0 || lengthActions.length > 0;
+        
+        if (createActions.length > 0 || hasEarlierSections) {
           chrome.contextMenus.create({
             id: 'sep-before-custom',
             parentId: 'kaguya-writer-selection',
@@ -293,6 +281,7 @@ async function buildContextMenus() {
           });
         }
         
+        // Custom Actions (user-created)
         for (const action of customActions) {
           chrome.contextMenus.create({
             id: `sel-${action.id}`,
