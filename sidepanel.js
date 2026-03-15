@@ -28,7 +28,8 @@ const DEFAULT_ACTIONS = [
     prompt_template: 'Summarize the following text concisely.\n\n{{text}}',
     mode: 'create',
     category: 'quick',
-    createdAt: 1000
+    createdAt: 1000,
+    tags: ['quick', 'create']
   },
   {
     id: 'explain',
@@ -36,7 +37,8 @@ const DEFAULT_ACTIONS = [
     prompt_template: 'Explain the following text in simple terms.\n\n{{text}}',
     mode: 'create',
     category: 'quick',
-    createdAt: 2000
+    createdAt: 2000,
+    tags: ['quick', 'create']
   },
   
   // Rewrite Actions
@@ -46,7 +48,8 @@ const DEFAULT_ACTIONS = [
     prompt_template: 'Paraphrase the following text using different words while keeping the same meaning.\n\n{{text}}',
     mode: 'rewrite',
     category: 'rewrite',
-    createdAt: 3000
+    createdAt: 3000,
+    tags: ['rewrite']
   },
   {
     id: 'improve',
@@ -54,7 +57,8 @@ const DEFAULT_ACTIONS = [
     prompt_template: 'Improve the following text by fixing grammar, clarity, and flow.\n\n{{text}}',
     mode: 'rewrite',
     category: 'rewrite',
-    createdAt: 4000
+    createdAt: 4000,
+    tags: ['rewrite', 'grammar']
   },
   
   // Change Tone Submenu
@@ -64,7 +68,8 @@ const DEFAULT_ACTIONS = [
     prompt_template: 'Rewrite the following text in an academic tone.\n\n{{text}}',
     mode: 'rewrite',
     category: 'tone',
-    createdAt: 5000
+    createdAt: 5000,
+    tags: ['tone', 'formal']
   },
   {
     id: 'tone-professional',
@@ -72,7 +77,8 @@ const DEFAULT_ACTIONS = [
     prompt_template: 'Rewrite the following text in a professional tone.\n\n{{text}}',
     mode: 'rewrite',
     category: 'tone',
-    createdAt: 6000
+    createdAt: 6000,
+    tags: ['tone', 'business']
   },
   {
     id: 'tone-persuasive',
@@ -80,7 +86,8 @@ const DEFAULT_ACTIONS = [
     prompt_template: 'Rewrite the following text to be more persuasive and compelling.\n\n{{text}}',
     mode: 'rewrite',
     category: 'tone',
-    createdAt: 7000
+    createdAt: 7000,
+    tags: ['tone', 'marketing']
   },
   {
     id: 'tone-casual',
@@ -88,7 +95,8 @@ const DEFAULT_ACTIONS = [
     prompt_template: 'Rewrite the following text in a casual, conversational tone.\n\n{{text}}',
     mode: 'rewrite',
     category: 'tone',
-    createdAt: 8000
+    createdAt: 8000,
+    tags: ['tone', 'informal']
   },
   {
     id: 'tone-funny',
@@ -96,7 +104,8 @@ const DEFAULT_ACTIONS = [
     prompt_template: 'Rewrite the following text to be humorous and entertaining.\n\n{{text}}',
     mode: 'rewrite',
     category: 'tone',
-    createdAt: 9000
+    createdAt: 9000,
+    tags: ['tone', 'creative']
   },
   
   // Change Length Submenu
@@ -106,7 +115,8 @@ const DEFAULT_ACTIONS = [
     prompt_template: 'Rewrite the following text to be more concise and shorter.\n\n{{text}}',
     mode: 'rewrite',
     category: 'length',
-    createdAt: 10000
+    createdAt: 10000,
+    tags: ['length', 'condense']
   },
   {
     id: 'length-longer',
@@ -114,7 +124,8 @@ const DEFAULT_ACTIONS = [
     prompt_template: 'Expand the following text with more detail and depth.\n\n{{text}}',
     mode: 'rewrite',
     category: 'length',
-    createdAt: 11000
+    createdAt: 11000,
+    tags: ['length', 'expand']
   },
   
   // Create Actions
@@ -124,7 +135,8 @@ const DEFAULT_ACTIONS = [
     prompt_template: 'Generate a catchy tagline based on the following text.\n\n{{text}}',
     mode: 'create',
     category: 'create',
-    createdAt: 12000
+    createdAt: 12000,
+    tags: ['create', 'marketing']
   },
   {
     id: 'social-media',
@@ -132,7 +144,8 @@ const DEFAULT_ACTIONS = [
     prompt_template: 'Create a social media post based on the following text.\n\n{{text}}',
     mode: 'create',
     category: 'create',
-    createdAt: 13000
+    createdAt: 13000,
+    tags: ['create', 'social']
   }
 ];
 
@@ -177,6 +190,7 @@ const elements = {
   scrollsList: document.getElementById('scrollsList'),
   scrollName: document.getElementById('scrollName'),
   scrollMode: document.getElementById('scrollMode'),
+  scrollTags: document.getElementById('scrollTags'),
   scrollPrompt: document.getElementById('scrollPrompt'),
   craftScrollBtn: document.getElementById('craftScrollBtn'),
   craftingStatus: document.getElementById('craftingStatus'),
@@ -184,17 +198,20 @@ const elements = {
   editScrollId: document.getElementById('editScrollId'),
   editScrollName: document.getElementById('editScrollName'),
   editScrollMode: document.getElementById('editScrollMode'),
+  editScrollTags: document.getElementById('editScrollTags'),
   editScrollPrompt: document.getElementById('editScrollPrompt'),
   saveScrollEdit: document.getElementById('saveScrollEdit'),
   deleteScrollEdit: document.getElementById('deleteScrollEdit'),
   editSmartRewriteBtn: document.getElementById('editSmartRewriteBtn'),
-  resetScrolls: document.getElementById('resetScrolls')
+  resetScrolls: document.getElementById('resetScrolls'),
+  tagFilter: document.getElementById('tagFilter')
 };
 
 // State
 let profiles = [];
 let activeProfileId = null;
 let currentActions = [];
+let currentTagFilter = 'all';
 
 // Initialize
 async function init() {
@@ -948,14 +965,29 @@ function clearCraftingForm() {
 
 // Render scrolls list with card UI - shows ALL scrolls (default + custom), newest first
 function renderScrollsList() {
+  // Collect all unique tags
+  const allTags = new Set();
+  currentActions.forEach(action => {
+    if (action.tags && Array.isArray(action.tags)) {
+      action.tags.forEach(tag => allTags.add(tag));
+    }
+  });
+  const uniqueTags = Array.from(allTags).sort();
+  
+  // Render tag filter
+  renderTagFilter(uniqueTags);
+  
+  // Filter and sort scrolls
+  let filteredActions = currentActions.filter(action => {
+    if (currentTagFilter === 'all') return true;
+    return action.tags && action.tags.includes(currentTagFilter);
+  });
+  
   // Sort: visible scrolls first (by updatedAt/createdAt), then hidden ones
-  // For scrolls without timestamps, extract timestamp from ID or use 0
-  const sortedActions = [...currentActions].sort((a, b) => {
-    // Hidden scrolls go to the bottom
+  const sortedActions = [...filteredActions].sort((a, b) => {
     if (a.hidden && !b.hidden) return 1;
     if (!a.hidden && b.hidden) return -1;
     
-    // Both visible or both hidden - sort by time
     const timeA = a.updatedAt || a.createdAt || extractTimestampFromId(a.id) || 0;
     const timeB = b.updatedAt || b.createdAt || extractTimestampFromId(b.id) || 0;
     return timeB - timeA;
@@ -965,8 +997,8 @@ function renderScrollsList() {
     elements.scrollsList.innerHTML = `
       <div class="scrolls-empty">
         <div class="scrolls-empty-icon">📜</div>
-        <h3>No Scrolls Yet</h3>
-        <p>Create your first scroll to get started</p>
+        <h3>${currentTagFilter === 'all' ? 'No Scrolls Yet' : 'No Scrolls with this Tag'}</h3>
+        <p>${currentTagFilter === 'all' ? 'Create your first scroll to get started' : 'Try selecting a different tag'}</p>
       </div>
     `;
     return;
@@ -976,6 +1008,9 @@ function renderScrollsList() {
     const avatarColor = getAvatarColor(action.label);
     const firstLetter = action.label.charAt(0).toUpperCase();
     const isDefault = DEFAULT_ACTIONS.find(d => d.id === action.id);
+    const tagsHtml = action.tags && action.tags.length > 0 
+      ? `<div class="scroll-tags">${action.tags.map(tag => `<span class="scroll-tag">${escapeHtml(tag)}</span>`).join('')}</div>`
+      : '';
     
     return `
       <div class="scroll-card ${isDefault ? 'default-scroll' : ''} ${action.hidden ? 'hidden-scroll' : ''}" data-id="${action.id}">
@@ -992,6 +1027,7 @@ function renderScrollsList() {
         <div class="scroll-info">
           <div class="scroll-name">${escapeHtml(action.label)} ${isDefault ? '<span class="scroll-badge">Default</span>' : ''} ${action.hidden ? '<span class="scroll-badge hidden-badge">Hidden</span>' : ''}</div>
           <div class="scroll-preview">${escapeHtml(action.prompt_template.substring(0, 60))}${action.prompt_template.length > 60 ? '...' : ''}</div>
+          ${tagsHtml}
         </div>
         <div class="scroll-actions">
           <button class="scroll-action-btn edit" title="Edit" data-id="${action.id}">
@@ -1041,10 +1077,32 @@ function extractTimestampFromId(id) {
   return match ? parseInt(match[1], 10) : 0;
 }
 
+// Render tag filter chips
+function renderTagFilter(tags) {
+  const filterHtml = `
+    <span class="filter-label">Filter:</span>
+    <button class="tag-chip ${currentTagFilter === 'all' ? 'active' : ''}" data-tag="all">All</button>
+    ${tags.map(tag => `
+      <button class="tag-chip ${currentTagFilter === tag ? 'active' : ''}" data-tag="${escapeHtml(tag)}">${escapeHtml(tag)}</button>
+    `).join('')}
+  `;
+  
+  elements.tagFilter.innerHTML = filterHtml;
+  
+  // Attach event listeners
+  elements.tagFilter.querySelectorAll('.tag-chip').forEach(chip => {
+    chip.addEventListener('click', (e) => {
+      currentTagFilter = e.target.dataset.tag;
+      renderScrollsList();
+    });
+  });
+}
+
 // Craft new scroll
 async function craftScroll() {
   const name = elements.scrollName.value.trim();
   const mode = elements.scrollMode.value;
+  const tagsInput = elements.scrollTags.value.trim();
   const prompt = elements.scrollPrompt.value.trim();
   
   // Clear previous errors
@@ -1071,6 +1129,11 @@ async function craftScroll() {
     return;
   }
   
+  // Parse tags
+  const tags = tagsInput 
+    ? tagsInput.split(',').map(t => t.trim().toLowerCase()).filter(t => t)
+    : [];
+  
   const now = Date.now();
   const newScroll = {
     id: 'scroll-' + now,
@@ -1078,7 +1141,8 @@ async function craftScroll() {
     mode,
     prompt_template: prompt,
     category: 'custom',
-    createdAt: now
+    createdAt: now,
+    tags
   };
   
   currentActions.push(newScroll);
@@ -1101,9 +1165,11 @@ function openEditScroll(id) {
   elements.editScrollId.value = scroll.id;
   elements.editScrollName.value = scroll.label;
   elements.editScrollMode.value = scroll.mode;
+  elements.editScrollTags.value = scroll.tags ? scroll.tags.join(', ') : '';
   elements.editScrollPrompt.value = scroll.prompt_template;
   
   clearFieldError(elements.editScrollName);
+  clearFieldError(elements.editScrollTags);
   clearFieldError(elements.editScrollPrompt);
   
   showShoinView('edit');
@@ -1114,6 +1180,7 @@ async function saveEditedScroll() {
   const id = elements.editScrollId.value;
   const name = elements.editScrollName.value.trim();
   const mode = elements.editScrollMode.value;
+  const tagsInput = elements.editScrollTags.value.trim();
   const prompt = elements.editScrollPrompt.value.trim();
   
   clearFieldError(elements.editScrollName);
@@ -1136,6 +1203,11 @@ async function saveEditedScroll() {
   
   if (hasError) return;
   
+  // Parse tags
+  const tags = tagsInput 
+    ? tagsInput.split(',').map(t => t.trim().toLowerCase()).filter(t => t)
+    : [];
+  
   const index = currentActions.findIndex(a => a.id === id);
   if (index !== -1) {
     currentActions[index] = { 
@@ -1143,6 +1215,7 @@ async function saveEditedScroll() {
       label: name, 
       mode, 
       prompt_template: prompt,
+      tags,
       updatedAt: Date.now()
     };
     await chrome.storage.local.set({ actions: currentActions });
