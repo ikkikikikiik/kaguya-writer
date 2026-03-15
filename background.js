@@ -242,8 +242,9 @@ async function buildContextMenus() {
           });
         }
         
-        // Only add separator if there are visible Create Actions or Custom Actions following
-        if (createActions.length > 0 || customActions.length > 0) {
+        // Only add separator if there are Create Actions following
+        // (Custom Actions separator is handled separately when Create Actions is empty)
+        if (createActions.length > 0) {
           chrome.contextMenus.create({
             id: 'sep-after-rewrite',
             parentId: 'kaguya-writer-selection',
@@ -279,9 +280,10 @@ async function buildContextMenus() {
       
       // Custom Actions (user-created) - add separator if no Create Actions but there are previous sections
       else if (customActions.length > 0) {
-        // Add separator if there are default actions before custom actions
-        if (quickActions.length > 0 || rewriteActions.length > 0 || toneActions.length > 0 || 
-            lengthActions.length > 0) {
+        // Add separator only if Length Actions exist (they don't add one when Create Actions is empty)
+        // OR if any earlier sections exist
+        if (lengthActions.length > 0 || quickActions.length > 0 || rewriteActions.length > 0 || 
+            toneActions.length > 0) {
           chrome.contextMenus.create({
             id: 'sep-before-custom',
             parentId: 'kaguya-writer-selection',
