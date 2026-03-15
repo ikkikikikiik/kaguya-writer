@@ -278,6 +278,7 @@ function setupEventListeners() {
   
   // Close attach menu when clicking outside
   document.addEventListener('click', (e) => {
+    if (window._attachMenuJustToggled) return;
     if (!elements.attachMenu.classList.contains('hidden') &&
         !e.target.closest('.attach-btn') && 
         !e.target.closest('.attach-menu')) {
@@ -1394,17 +1395,16 @@ async function resetScrolls() {
 // Toggle attachment menu visibility
 function toggleAttachMenu(e) {
   if (e) {
-    e.preventDefault();
     e.stopPropagation();
   }
   elements.attachMenu.classList.toggle('hidden');
   elements.attachBtn.classList.toggle('active');
-}
-
-// Hide attachment menu
-function hideAttachMenu() {
-  elements.attachMenu.classList.add('hidden');
-  elements.attachBtn.classList.remove('active');
+  
+  // Prevent the document click listener from immediately closing the menu
+  window._attachMenuJustToggled = true;
+  setTimeout(() => {
+    window._attachMenuJustToggled = false;
+  }, 100);
 }
 
 // Trigger file upload based on type
