@@ -1305,28 +1305,29 @@ async function smartRewritePrompt(textareaElement, buttonElement, statusElement,
   buttonElement.classList.add('breathing');
   
   try {
-    let result;
-    
-    if (hasPrompt && !hasName) {
-      // Generate name from prompt
-      if (statusElement) showCraftingStatus('Generating name...', '');
-      result = await generateScrollName(currentPrompt, profile);
-      if (nameElement) nameElement.value = result;
-      if (statusElement) showCraftingStatus('Name generated!', 'success');
+    // Always rewrite the prompt if it exists
+    if (hasPrompt) {
+      if (statusElement) showCraftingStatus('Rewriting...', '');
+      const rewrittenPrompt = await rewriteExistingPrompt(currentPrompt, profile);
+      textareaElement.value = rewrittenPrompt;
+      clearFieldError(textareaElement);
+      
+      // Generate name if empty
+      if (!hasName && nameElement) {
+        if (statusElement) showCraftingStatus('Generating name...', '');
+        const generatedName = await generateScrollName(rewrittenPrompt, profile);
+        nameElement.value = generatedName;
+        if (statusElement) showCraftingStatus('Prompt rewritten & name generated!', 'success');
+      } else {
+        if (statusElement) showCraftingStatus('Prompt rewritten!', 'success');
+      }
     } else if (!hasPrompt && hasName) {
-      // Generate prompt from name
+      // Only name exists - generate prompt from name
       if (statusElement) showCraftingStatus('Creating prompt...', '');
-      result = await generateScrollPrompt(currentName, profile);
-      textareaElement.value = result;
+      const generatedPrompt = await generateScrollPrompt(currentName, profile);
+      textareaElement.value = generatedPrompt;
       clearFieldError(textareaElement);
       if (statusElement) showCraftingStatus('Prompt created!', 'success');
-    } else {
-      // Both exist - rewrite the prompt
-      if (statusElement) showCraftingStatus('Rewriting...', '');
-      result = await rewriteExistingPrompt(currentPrompt, profile);
-      textareaElement.value = result;
-      clearFieldError(textareaElement);
-      if (statusElement) showCraftingStatus('Prompt rewritten!', 'success');
     }
   } catch (error) {
     console.error('[Kaguya Writer] Smart rewrite error:', error);
