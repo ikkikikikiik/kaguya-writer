@@ -1119,34 +1119,59 @@ function renderTagFilter(tags) {
   });
 }
 
-// Craft new scroll
+// Craft new scroll - auto-generates missing fields using smart rewrite
 async function craftScroll() {
-  const name = elements.scrollName.value.trim();
+  let name = elements.scrollName.value.trim();
   const mode = elements.scrollMode.value;
   const tagsInput = elements.scrollTags.value.trim();
-  const prompt = elements.scrollPrompt.value.trim();
+  let prompt = elements.scrollPrompt.value.trim();
   
   // Clear previous errors
   clearFieldError(elements.scrollName);
   clearFieldError(elements.scrollPrompt);
   
-  let hasError = false;
-  
-  if (!name) {
+  // Check if at least one field is filled (minimum requirement)
+  if (!name && !prompt) {
     showFieldError(elements.scrollName, 'Scroll name is required');
-    hasError = true;
-  }
-  
-  if (!prompt) {
     showFieldError(elements.scrollPrompt, 'Prompt template is required');
-    hasError = true;
-  } else if (!prompt.includes('{{text}}')) {
-    showFieldError(elements.scrollPrompt, 'Prompt must include {{text}} placeholder');
-    hasError = true;
+    showCraftingStatus('Please enter at least a scroll name or prompt', 'error');
+    return;
   }
   
-  if (hasError) {
-    showCraftingStatus('Please fix the errors above', 'error');
+  // Get profile for smart generation
+  const profile = await getActiveProfile();
+  if (!profile.apiKey) {
+    showCraftingStatus('Please configure an API profile first', 'error');
+    return;
+  }
+  
+  // Auto-generate missing fields
+  try {
+    if (prompt && !name) {
+      // Generate name from prompt
+      showCraftingStatus('Generating scroll name...', '');
+      name = await generateScrollName(prompt, profile);
+      elements.scrollName.value = name;
+    } else if (name && !prompt) {
+      // Generate prompt from name
+      showCraftingStatus('Creating prompt template...', '');
+      prompt = await generateScrollPrompt(name, profile);
+      elements.scrollPrompt.value = prompt;
+    } else if (name && prompt && !prompt.includes('{{text}}')) {
+      // Has both but missing placeholder - rewrite prompt
+      showCraftingStatus('Refining prompt...', '');
+      prompt = await rewriteExistingPrompt(prompt, profile);
+      elements.scrollPrompt.value = prompt;
+    }
+  } catch (error) {
+    console.error('[Kaguya Writer] Auto-generation failed:', error);
+    showCraftingStatus('Auto-generation failed. Please fill in manually.', 'error');
+    return;
+  }
+  
+  // Final validation
+  if (!name || !prompt || !prompt.includes('{{text}}')) {
+    showCraftingStatus('Please complete all fields', 'error');
     return;
   }
   
@@ -1171,6 +1196,7 @@ async function craftScroll() {
   
   elements.scrollName.value = '';
   elements.scrollPrompt.value = '';
+  elements.scrollTags.value = '';
   
   showShoinView('scrolls');
   renderScrollsList();
