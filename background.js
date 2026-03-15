@@ -159,7 +159,7 @@ async function buildContextMenus() {
     if (createActions.length > 0) {
       chrome.contextMenus.create({
         id: 'kaguya-writer-page',
-        title: '🌙 Kaguya Writer',
+        title: 'Kaguya Writer',
         contexts: ['page']
       });
       
@@ -177,7 +177,7 @@ async function buildContextMenus() {
     if (rewriteActions.length > 0 || createActions.length > 0) {
       chrome.contextMenus.create({
         id: 'kaguya-writer-selection',
-        title: '🌙 Kaguya Writer',
+        title: 'Kaguya Writer',
         contexts: ['selection']
       });
       
