@@ -17,7 +17,8 @@ AI writing toolkit for Chrome. Right-click any text to rewrite, summarize, or ch
 2. Open `chrome://extensions/` in Chrome
 3. Enable **Developer mode** (toggle top-right)
 4. Click **Load unpacked** → Select the folder
-5. Click the 🌙 icon to open settings → Add your API key
+5. Click the Kaguya Writer extension icon to open the side panel
+6. Go to **Settings** tab → Add your API endpoint URL and API key
 
 ## Usage
 
