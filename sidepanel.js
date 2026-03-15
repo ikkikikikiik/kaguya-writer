@@ -183,7 +183,9 @@ const elements = {
   // Shoin (Scrolls)
   scrollsView: document.getElementById('scrollsView'),
   craftingView: document.getElementById('craftingView'),
+  craftingHeader: document.getElementById('craftingHeader'),
   editView: document.getElementById('editView'),
+  editHeader: document.getElementById('editHeader'),
   newScrollBtn: document.getElementById('newScrollBtn'),
   backToScrolls: document.getElementById('backToScrolls'),
   backToScrollsEdit: document.getElementById('backToScrollsEdit'),
@@ -354,9 +356,9 @@ function completeMessage(messageId) {
     if (msgEl) {
       msgEl.classList.remove('streaming');
       
-      // Add copy button to header if not present (for AI messages that were streaming)
-      const header = msgEl.querySelector('.message-header');
-      if (header && message.role === 'assistant' && !header.querySelector('.message-copy-btn')) {
+      // Add copy button to actions if not present (for AI messages that were streaming)
+      const actionsDiv = msgEl.querySelector('.message-actions');
+      if (actionsDiv && message.role === 'assistant' && !actionsDiv.querySelector('.message-copy-btn')) {
         const copyBtn = document.createElement('button');
         copyBtn.className = 'message-copy-btn';
         copyBtn.title = 'Copy message';
@@ -367,7 +369,7 @@ function completeMessage(messageId) {
           </svg>
         `;
         copyBtn.addEventListener('click', () => copyMessage(messageId));
-        header.appendChild(copyBtn);
+        actionsDiv.appendChild(copyBtn);
       }
     }
   }
@@ -403,21 +405,25 @@ function renderMessage(message) {
   const avatar = message.role === 'user' ? '👤' : '🌙';
   const label = message.role === 'user' ? 'You' : 'Kaguya';
   
-  // Create message structure
+  // Create message structure - copy button positioned at bottom of bubble
+  const copyBtnHtml = !message.isStreaming ? `
+    <button class="message-copy-btn" title="Copy message" data-message-id="${message.id}">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+      </svg>
+    </button>
+  ` : '';
+  
   msgEl.innerHTML = `
     <div class="message-header">
       <span class="message-avatar">${avatar}</span>
       <span class="message-label">${label}</span>
-      ${!message.isStreaming ? `
-        <button class="message-copy-btn" title="Copy message" data-message-id="${message.id}">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-          </svg>
-        </button>
-      ` : ''}
     </div>
     <div class="message-content">${formatMessageContent(message.content)}</div>
+    <div class="message-actions">
+      ${copyBtnHtml}
+    </div>
   `;
   
   // Add copy handler
@@ -942,14 +948,46 @@ function showShoinView(view) {
   elements.craftingView.classList.remove('active');
   elements.editView.classList.remove('active');
   
+  // Remove scroll listeners when switching views
+  elements.craftingView.removeEventListener('scroll', handleCraftingScroll);
+  elements.editView.removeEventListener('scroll', handleEditScroll);
+  
   if (view === 'scrolls') {
     elements.scrollsView.classList.add('active');
     renderScrollsList();
   } else if (view === 'crafting') {
     elements.craftingView.classList.add('active');
     clearCraftingForm();
+    // Add scroll listener for floating button effect
+    setTimeout(() => {
+      elements.craftingView.addEventListener('scroll', handleCraftingScroll);
+    }, 0);
   } else if (view === 'edit') {
     elements.editView.classList.add('active');
+    // Add scroll listener for floating button effect
+    setTimeout(() => {
+      elements.editView.addEventListener('scroll', handleEditScroll);
+    }, 0);
+  }
+}
+
+// Handle scroll for crafting view - transform button to floating glass pill
+function handleCraftingScroll() {
+  const scrollTop = elements.craftingView.scrollTop;
+  if (scrollTop > 20) {
+    elements.craftingHeader.classList.add('scrolled');
+  } else {
+    elements.craftingHeader.classList.remove('scrolled');
+  }
+}
+
+// Handle scroll for edit view - transform button to floating glass pill
+function handleEditScroll() {
+  const scrollTop = elements.editView.scrollTop;
+  if (scrollTop > 20) {
+    elements.editHeader.classList.add('scrolled');
+  } else {
+    elements.editHeader.classList.remove('scrolled');
   }
 }
 

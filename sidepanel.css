@@ -361,24 +361,43 @@ body {
   50% { opacity: 1; transform: scale(1.2); }
 }
 
+/* Message Actions */
+.message-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 0 4px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.message:hover .message-actions {
+  opacity: 1;
+}
+
+/* User messages - actions on right */
+.message.user .message-actions {
+  justify-content: flex-end;
+}
+
+/* AI messages - actions on left */
+.message.ai .message-actions {
+  justify-content: flex-start;
+}
+
 /* Copy Button */
 .message-copy-btn {
-  margin-left: auto;
   background: transparent;
   border: none;
   color: var(--text-tertiary);
   cursor: pointer;
   padding: 4px 6px;
   border-radius: 6px;
-  opacity: 0;
   transition: all 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.message:hover .message-copy-btn {
-  opacity: 1;
 }
 
 .message-copy-btn:hover {
@@ -1318,10 +1337,52 @@ body {
   margin: 0;
 }
 
+/* Shoin Views */
+#craftingView, #editView {
+  overflow-y: auto;
+  max-height: 100%;
+}
+
 /* Crafting Table */
 .crafting-header {
   margin-bottom: 16px;
   margin-top: 8px;
+  transition: all 0.3s ease;
+}
+
+/* Back to Scrolls button - transforms to floating glass pill when scrolled */
+.back-scrolls-btn {
+  transition: all 0.3s var(--viscous);
+}
+
+.crafting-header.scrolled {
+  position: sticky;
+  top: 8px;
+  z-index: 100;
+}
+
+.crafting-header.scrolled .back-scrolls-btn {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 24px;
+  padding: 10px 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.crafting-header.scrolled .back-scrolls-btn:hover {
+  background: rgba(100, 200, 255, 0.15);
+  border-color: rgba(100, 220, 255, 0.3);
+  box-shadow: 0 4px 24px rgba(100, 200, 255, 0.2);
+}
+
+.crafting-header.scrolled .back-text {
+  display: none;
+}
+
+.crafting-header.scrolled .back-scrolls-btn svg {
+  margin: 0;
 }
 
 .btn-text {
