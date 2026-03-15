@@ -9,6 +9,7 @@ AI writing toolkit for Chrome. Right-click any text to rewrite, summarize, or ch
 - **Create** - Generate taglines, social posts from your text
 - **Chat** - Follow-up conversation about any content
 - **Multiple Profiles** - Switch between different AI providers
+- **Shoin (Scriptorium)** - Organize scrolls with tags, hide/unhide, edit existing scrolls
 
 ## Installation
 
@@ -37,11 +38,23 @@ Any OpenAI-compatible endpoint works:
 | Gemini | `https://generativelanguage.googleapis.com/v1beta/openai/chat/completions` |
 | Local (Ollama) | `http://localhost:11434/v1/chat/completions` |
 
-## Custom Actions
+## Shoin (Custom Scrolls)
 
-Go to **Actions** tab in the side panel to:
-- Create custom rewrite/create actions
+Go to **Shoin** tab in the side panel to:
+- **Craft new scrolls** - Create custom rewrite/create actions
+- **Organize with tags** - Tag scrolls and filter by tags
+- **Hide/unhide** - Hide scrolls from context menu without deleting
+- **Edit scrolls** - Modify existing scrolls, including defaults
+- **Smart rewrite** - AI-assisted prompt optimization
 - Use `{{text}}` placeholder for selected content
+
+## Design
+
+**Liquid Glass aesthetic** - Glass morphism UI with:
+- Backdrop blur and translucent surfaces
+- Holographic cyan/magenta accents
+- Spring physics animations
+- Smooth breathing pulse effects
 
 ## Privacy
 
