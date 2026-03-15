@@ -1297,7 +1297,7 @@ async function smartRewritePrompt(textareaElement, buttonElement, statusElement)
   
   // Show loading state
   buttonElement.disabled = true;
-  buttonElement.classList.add('spinning');
+  buttonElement.classList.add('breathing');
   if (statusElement) showCraftingStatus('Rewriting...', '');
   
   const rewritePrompt = `Rewrite the following prompt to be clear and concise. Focus on:
@@ -1354,7 +1354,7 @@ Rewritten prompt (output ONLY the rewritten prompt, nothing else):`;
     if (statusElement) showCraftingStatus('Rewrite failed. Please try again.', 'error');
   } finally {
     buttonElement.disabled = false;
-    buttonElement.classList.remove('spinning');
+    buttonElement.classList.remove('breathing');
   }
 }
 

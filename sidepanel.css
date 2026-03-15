@@ -1412,18 +1412,27 @@ body {
 }
 
 .smart-rewrite-btn:disabled {
-  opacity: 0.5;
+  opacity: 1;
   cursor: not-allowed;
   transform: none;
 }
 
-.smart-rewrite-btn.spinning svg {
-  animation: spin 1s linear infinite;
+/* Breathing glow animation for smart rewrite */
+.smart-rewrite-btn.breathing {
+  animation: breathe-glow 1.5s ease-in-out infinite;
 }
 
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+@keyframes breathe-glow {
+  0%, 100% {
+    background: linear-gradient(135deg, rgba(100, 200, 255, 0.15), rgba(200, 100, 255, 0.1));
+    border-color: rgba(100, 220, 255, 0.3);
+    box-shadow: 0 0 8px rgba(100, 200, 255, 0.2);
+  }
+  50% {
+    background: linear-gradient(135deg, rgba(100, 200, 255, 0.35), rgba(200, 100, 255, 0.25));
+    border-color: rgba(100, 220, 255, 0.6);
+    box-shadow: 0 0 20px rgba(100, 200, 255, 0.5), 0 0 40px rgba(100, 200, 255, 0.2);
+  }
 }
 
 .crafting-actions {
