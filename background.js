@@ -140,7 +140,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   return true;
 });
 
-// Build context menus - flat structure with separators
+// Build context menus - flat structure with single separator by mode
 async function buildContextMenus() {
   try {
     await chrome.contextMenus.removeAll();
@@ -149,23 +149,20 @@ async function buildContextMenus() {
     const actions = await ensureCacheLoaded();
     // Filter out hidden actions from context menu
     const visibleActions = actions.filter(a => !a.hidden);
-    const quickActions = visibleActions.filter(a => a.category === 'quick');
-    const rewriteActions = visibleActions.filter(a => a.category === 'rewrite');
-    const toneActions = visibleActions.filter(a => a.category === 'tone');
-    const lengthActions = visibleActions.filter(a => a.category === 'length');
-    const createActions = visibleActions.filter(a => a.category === 'create');
-    const customActions = visibleActions.filter(a => a.category === 'custom' || !a.category);
     
-    // Create parent menu for page context (no selection - create mode only)
-    const pageContextActions = [...quickActions, ...createActions, ...customActions.filter(a => a.mode === 'create')];
-    if (pageContextActions.length > 0) {
+    // Group by mode (for selection context)
+    const rewriteActions = visibleActions.filter(a => a.mode === 'rewrite');
+    const createActions = visibleActions.filter(a => a.mode === 'create');
+    
+    // Create parent menu for page context (create mode only)
+    if (createActions.length > 0) {
       chrome.contextMenus.create({
         id: 'kaguya-writer-page',
         title: '🌙 Kaguya Writer',
         contexts: ['page']
       });
       
-      for (const action of pageContextActions) {
+      for (const action of createActions) {
         chrome.contextMenus.create({
           id: `page-${action.id}`,
           parentId: 'kaguya-writer-page',
@@ -175,88 +172,16 @@ async function buildContextMenus() {
       }
     }
     
-    // Create parent menu for text selection - FLAT structure
-    if (quickActions.length > 0 || rewriteActions.length > 0 || toneActions.length > 0 || 
-        lengthActions.length > 0 || createActions.length > 0 || customActions.length > 0) {
+    // Create parent menu for text selection
+    if (rewriteActions.length > 0 || createActions.length > 0) {
       chrome.contextMenus.create({
         id: 'kaguya-writer-selection',
         title: '🌙 Kaguya Writer',
         contexts: ['selection']
       });
       
-      // Quick Actions Section
-      if (quickActions.length > 0) {
-        for (const action of quickActions) {
-          chrome.contextMenus.create({
-            id: `sel-${action.id}`,
-            parentId: 'kaguya-writer-selection',
-            title: action.label,
-            contexts: ['selection']
-          });
-        }
-        
-        // Only add separator if there are Rewrite actions following
-        if (rewriteActions.length > 0 || toneActions.length > 0 || lengthActions.length > 0) {
-          chrome.contextMenus.create({
-            id: 'sep-after-quick',
-            parentId: 'kaguya-writer-selection',
-            title: '────────────',
-            contexts: ['selection'],
-            enabled: false
-          });
-        }
-      }
-      
-      // Rewrite Actions
-      if (rewriteActions.length > 0) {
-        for (const action of rewriteActions) {
-          chrome.contextMenus.create({
-            id: `sel-${action.id}`,
-            parentId: 'kaguya-writer-selection',
-            title: action.label,
-            contexts: ['selection']
-          });
-        }
-      }
-      
-      // Tone Actions
-      if (toneActions.length > 0) {
-        for (const action of toneActions) {
-          chrome.contextMenus.create({
-            id: `sel-${action.id}`,
-            parentId: 'kaguya-writer-selection',
-            title: `Tone: ${action.label}`,
-            contexts: ['selection']
-          });
-        }
-      }
-      
-      // Length Actions
-      if (lengthActions.length > 0) {
-        for (const action of lengthActions) {
-          chrome.contextMenus.create({
-            id: `sel-${action.id}`,
-            parentId: 'kaguya-writer-selection',
-            title: `Length: ${action.label}`,
-            contexts: ['selection']
-          });
-        }
-        
-        // Only add separator if there are Create Actions following
-        // (Custom Actions separator is handled separately when Create Actions is empty)
-        if (createActions.length > 0) {
-          chrome.contextMenus.create({
-            id: 'sep-after-rewrite',
-            parentId: 'kaguya-writer-selection',
-            title: '────────────',
-            contexts: ['selection'],
-            enabled: false
-          });
-        }
-      }
-      
-      // Create Actions
-      for (const action of createActions) {
+      // Rewrite Actions (all actions with mode: 'rewrite')
+      for (const action of rewriteActions) {
         chrome.contextMenus.create({
           id: `sel-${action.id}`,
           parentId: 'kaguya-writer-selection',
@@ -265,31 +190,26 @@ async function buildContextMenus() {
         });
       }
       
-      // Add separator before Custom Actions if needed
-      if (customActions.length > 0) {
-        // Check if we need a separator (if Create Actions didn't add one, or if there are earlier sections)
-        const hasEarlierSections = quickActions.length > 0 || rewriteActions.length > 0 || 
-                                   toneActions.length > 0 || lengthActions.length > 0;
-        
-        if (createActions.length > 0 || hasEarlierSections) {
-          chrome.contextMenus.create({
-            id: 'sep-before-custom',
-            parentId: 'kaguya-writer-selection',
-            title: '────────────',
-            contexts: ['selection'],
-            enabled: false
-          });
-        }
-        
-        // Custom Actions (user-created)
-        for (const action of customActions) {
-          chrome.contextMenus.create({
-            id: `sel-${action.id}`,
-            parentId: 'kaguya-writer-selection',
-            title: action.label,
-            contexts: ['selection']
-          });
-        }
+      // Single separator between rewrite and create modes
+      if (rewriteActions.length > 0 && createActions.length > 0) {
+        chrome.contextMenus.create({
+          id: 'sep-mode',
+          parentId: 'kaguya-writer-selection',
+          title: '────────────',
+          contexts: ['selection'],
+          enabled: false
+        });
+      }
+      
+      // Create Actions (all actions with mode: 'create')
+      for (const action of createActions) {
+        chrome.contextMenus.create({
+          id: `sel-${action.id}`,
+          parentId: 'kaguya-writer-selection',
+          title: action.label,
+          contexts: ['selection']
+        });
+      }
       }
     }
     
