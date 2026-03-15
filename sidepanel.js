@@ -505,20 +505,27 @@ function formatMessageContent(content) {
   
   let html = content;
   
+  // Escape HTML first
   html = html.replace(/&/g, '&amp;')
              .replace(/</g, '&lt;')
              .replace(/>/g, '&gt;');
   
+  // Parse code blocks first (before other formatting)
   html = html.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
   html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+  
+  // Parse headers
   html = html.replace(/^#### (.*$)/gim, '<h4>$1</h4>');
   html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
   html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>');
   html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>');
+  
+  // Parse bold and italic
   html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
   html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
   html = html.replace(/_([^_]+)_/g, '<em>$1</em>');
   
+  // Parse lists - do this after inline formatting but before paragraph wrapping
   const lines = html.split('\n');
   let inList = false;
   let result = [];
@@ -544,17 +551,43 @@ function formatMessageContent(content) {
   }
   html = result.join('\n');
   
+  // Parse links
   html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+  
+  // Parse tables
   html = parseTables(html);
   
+  // Handle paragraphs - but don't wrap lists in paragraphs
   html = html.replace(/\n{3,}/g, '\n\n');
-  html = html.replace(/([^>])\n\n/g, '$1</p><p>');
-  html = html.replace(/([^>])\n([^<])/g, '$1<br>$2');
   
-  if (!html.startsWith('<') && html.trim()) {
-    html = '<p>' + html + '</p>';
-  }
+  // Split by double newlines and process each paragraph separately
+  const paragraphs = html.split('\n\n');
+  const processedParagraphs = paragraphs.map(para => {
+    para = para.trim();
+    if (!para) return '';
+    
+    // Skip if it's already a block element
+    if (para.startsWith('<ul>') || para.startsWith('<pre>') || 
+        para.startsWith('<h1>') || para.startsWith('<h2>') || 
+        para.startsWith('<h3>') || para.startsWith('<h4>') ||
+        para.startsWith('<table>')) {
+      return para;
+    }
+    
+    // Convert single newlines to <br> within the paragraph
+    para = para.replace(/\n/g, '<br>');
+    
+    // Wrap in paragraph tags if not empty and not already wrapped
+    if (para && !para.startsWith('<')) {
+      para = '<p>' + para + '</p>';
+    }
+    
+    return para;
+  });
   
+  html = processedParagraphs.filter(p => p).join('\n');
+  
+  // Clean up empty paragraphs
   html = html.replace(/<p><\/p>/g, '');
   html = html.replace(/<p><br><\/p>/g, '');
   
