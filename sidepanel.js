@@ -276,13 +276,6 @@ function setupEventListeners() {
   elements.pdfInput.addEventListener('change', (e) => handleFileSelect(e, 'pdf'));
   elements.removeAttachment.addEventListener('click', clearAttachment);
   
-  // Close attach menu when clicking outside
-  document.addEventListener('click', (e) => {
-    if (!e.target.closest('.attach-btn') && !e.target.closest('.attach-menu')) {
-      hideAttachMenu();
-    }
-  });
-  
   // Profile management
   elements.profileSelect.addEventListener('change', handleProfileSelect);
   elements.saveProfile.addEventListener('click', saveProfile);
@@ -1390,15 +1383,36 @@ async function resetScrolls() {
 // ==================== ATTACHMENT HANDLING ====================
 
 // Toggle attachment menu visibility
-function toggleAttachMenu() {
-  elements.attachMenu.classList.toggle('hidden');
-  elements.attachBtn.classList.toggle('active');
+function toggleAttachMenu(e) {
+  if (e) e.stopPropagation();
+  const isHidden = elements.attachMenu.classList.contains('hidden');
+  
+  if (isHidden) {
+    elements.attachMenu.classList.remove('hidden');
+    elements.attachBtn.classList.add('active');
+    // Add click listener to close menu when clicking outside
+    setTimeout(() => {
+      document.addEventListener('click', closeAttachMenuOnClickOutside, { once: true });
+    }, 0);
+  } else {
+    hideAttachMenu();
+  }
 }
 
 // Hide attachment menu
 function hideAttachMenu() {
   elements.attachMenu.classList.add('hidden');
   elements.attachBtn.classList.remove('active');
+}
+
+// Close menu when clicking outside
+function closeAttachMenuOnClickOutside(e) {
+  if (!elements.attachMenu.contains(e.target) && !elements.attachBtn.contains(e.target)) {
+    hideAttachMenu();
+  } else {
+    // Re-add listener if click was inside menu
+    document.addEventListener('click', closeAttachMenuOnClickOutside, { once: true });
+  }
 }
 
 // Trigger file upload based on type

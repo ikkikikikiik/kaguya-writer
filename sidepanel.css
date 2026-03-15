@@ -601,19 +601,22 @@ body {
 
 /* Attachment Menu */
 .attach-menu {
-  position: absolute;
-  bottom: 60px;
-  left: 10px;
-  background: linear-gradient(135deg, rgba(30, 35, 50, 0.95), rgba(20, 25, 40, 0.95));
+  position: fixed;
+  bottom: 80px;
+  left: 20px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
   backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid var(--glass-border);
-  border-radius: 16px;
-  padding: 8px;
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 20px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-  z-index: 100;
+  gap: 6px;
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  z-index: 1000;
   animation: menuIn 0.2s ease;
 }
 
