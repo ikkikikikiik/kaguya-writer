@@ -754,6 +754,7 @@ body {
   border: 1px solid var(--refraction-rim);
   border-radius: var(--radius-sm);
   padding: 12px 14px;
+  overflow: hidden;
 }
 
 .provider-hints summary {
@@ -779,6 +780,8 @@ body {
   font-size: 12px;
   margin-bottom: 6px;
   font-family: 'SF Mono', monospace;
+  word-break: break-all;
+  line-height: 1.5;
 }
 
 .hint-list strong {
