@@ -677,7 +677,7 @@ function buildMessagesForAPI(currentUserMessage, attachment = null) {
     });
   }
   
-  const history = conversation.messages.slice(-10);
+  const history = conversation.messages; // Include all conversation history
   for (const msg of history) {
     if (!msg.isStreaming && msg.content) {
       // Check if this message has an image attachment that needs to be included
@@ -689,6 +689,14 @@ function buildMessagesForAPI(currentUserMessage, attachment = null) {
             { type: 'text', text: msg.content },
             { type: 'image_url', image_url: { url: msg.attachment.data } }
           ]
+        });
+      } else if (msg.attachment && msg.attachment.type === 'page') {
+        // Include webpage content with the message
+        const { title, url, content } = msg.attachment.data;
+        const fullContent = `${msg.content}\n\n[Attached Website: ${title}]\nURL: ${url}\n\nContent:\n${content}`;
+        messages.push({
+          role: msg.role,
+          content: fullContent
         });
       } else {
         messages.push({
