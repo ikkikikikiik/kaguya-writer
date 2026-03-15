@@ -1152,6 +1152,12 @@ async function craftScroll() {
       showCraftingStatus('Generating scroll name...', '');
       name = await generateScrollName(prompt, profile);
       elements.scrollName.value = name;
+      // Also ensure prompt has {{text}} placeholder
+      if (!prompt.includes('{{text}}')) {
+        showCraftingStatus('Refining prompt...', '');
+        prompt = await rewriteExistingPrompt(prompt, profile);
+        elements.scrollPrompt.value = prompt;
+      }
     } else if (name && !prompt) {
       // Generate prompt from name
       showCraftingStatus('Creating prompt template...', '');
