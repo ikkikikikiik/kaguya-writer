@@ -273,7 +273,7 @@ function updateMessage(messageId, newContent) {
   }
 }
 
-// Mark message as complete
+// Mark message as complete (remove streaming indicator and add copy button)
 function completeMessage(messageId) {
   const message = conversation.messages.find(m => m.id === messageId);
   if (message) {
@@ -281,6 +281,22 @@ function completeMessage(messageId) {
     const msgEl = document.querySelector(`[data-message-id="${messageId}"]`);
     if (msgEl) {
       msgEl.classList.remove('streaming');
+      
+      // Add copy button to header if not present (for AI messages that were streaming)
+      const header = msgEl.querySelector('.message-header');
+      if (header && message.role === 'assistant' && !header.querySelector('.message-copy-btn')) {
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'message-copy-btn';
+        copyBtn.title = 'Copy message';
+        copyBtn.innerHTML = `
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+          </svg>
+        `;
+        copyBtn.addEventListener('click', () => copyMessage(messageId));
+        header.appendChild(copyBtn);
+      }
     }
   }
 }
