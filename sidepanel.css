@@ -1417,23 +1417,25 @@ body {
   transform: none;
 }
 
-/* Breathing glow animation for smart rewrite */
+/* Pulse animation for smart rewrite - based on https://markodenic.com/css-pulse-animation/ */
 .smart-rewrite-btn.breathing {
-  animation: breathe-glow 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  animation: pulse-cyan 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
-@keyframes breathe-glow {
-  0%, 100% {
-    background: linear-gradient(135deg, rgba(100, 200, 255, 0.12), rgba(200, 100, 255, 0.08));
-    border-color: rgba(100, 220, 255, 0.25);
-    box-shadow: 0 0 4px rgba(100, 200, 255, 0.15);
-    opacity: 0.85;
+@keyframes pulse-cyan {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(100, 200, 255, 0.6);
   }
-  50% {
-    background: linear-gradient(135deg, rgba(100, 200, 255, 0.28), rgba(200, 100, 255, 0.18));
-    border-color: rgba(100, 220, 255, 0.5);
-    box-shadow: 0 0 16px rgba(100, 200, 255, 0.35), 0 0 32px rgba(100, 200, 255, 0.15);
-    opacity: 1;
+  
+  70% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 12px rgba(100, 200, 255, 0);
+  }
+  
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(100, 200, 255, 0);
   }
 }
 
