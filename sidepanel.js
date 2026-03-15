@@ -264,12 +264,12 @@ function setupEventListeners() {
   
   // Shoin - Crafting
   elements.craftScrollBtn.addEventListener('click', craftScroll);
-  elements.smartRewriteBtn.addEventListener('click', () => smartRewritePrompt(elements.scrollPrompt, elements.smartRewriteBtn, elements.craftingStatus));
+  elements.smartRewriteBtn.addEventListener('click', () => smartRewritePrompt(elements.scrollPrompt, elements.smartRewriteBtn, elements.craftingStatus, elements.scrollName));
   
   // Shoin - Edit
   elements.saveScrollEdit.addEventListener('click', saveEditedScroll);
   elements.deleteScrollEdit.addEventListener('click', deleteEditedScroll);
-  elements.editSmartRewriteBtn.addEventListener('click', () => smartRewritePrompt(elements.editScrollPrompt, elements.editSmartRewriteBtn, null));
+  elements.editSmartRewriteBtn.addEventListener('click', () => smartRewritePrompt(elements.editScrollPrompt, elements.editSmartRewriteBtn, null, elements.editScrollName));
   
   // Shoin - Reset
   elements.resetScrolls.addEventListener('click', resetScrolls);
@@ -1280,13 +1280,9 @@ async function resetScrolls() {
 }
 
 // Smart rewrite prompt using AI
-async function smartRewritePrompt(textareaElement, buttonElement, statusElement) {
-  const currentText = textareaElement.value.trim();
-  
-  if (!currentText) {
-    if (statusElement) showCraftingStatus('Please enter a prompt first', 'error');
-    return;
-  }
+async function smartRewritePrompt(textareaElement, buttonElement, statusElement, nameElement = null) {
+  const currentPrompt = textareaElement.value.trim();
+  const currentName = nameElement ? nameElement.value.trim() : '';
   
   // Get active profile for API
   const profile = await getActiveProfile();
@@ -1295,11 +1291,131 @@ async function smartRewritePrompt(textareaElement, buttonElement, statusElement)
     return;
   }
   
+  // Determine what to do based on what's filled in
+  const hasPrompt = currentPrompt.length > 0;
+  const hasName = currentName.length > 0;
+  
+  if (!hasPrompt && !hasName) {
+    if (statusElement) showCraftingStatus('Please enter a scroll name or prompt first', 'error');
+    return;
+  }
+  
   // Show loading state
   buttonElement.disabled = true;
   buttonElement.classList.add('breathing');
-  if (statusElement) showCraftingStatus('Rewriting...', '');
   
+  try {
+    let result;
+    
+    if (hasPrompt && !hasName) {
+      // Generate name from prompt
+      if (statusElement) showCraftingStatus('Generating name...', '');
+      result = await generateScrollName(currentPrompt, profile);
+      if (nameElement) nameElement.value = result;
+      if (statusElement) showCraftingStatus('Name generated!', 'success');
+    } else if (!hasPrompt && hasName) {
+      // Generate prompt from name
+      if (statusElement) showCraftingStatus('Creating prompt...', '');
+      result = await generateScrollPrompt(currentName, profile);
+      textareaElement.value = result;
+      clearFieldError(textareaElement);
+      if (statusElement) showCraftingStatus('Prompt created!', 'success');
+    } else {
+      // Both exist - rewrite the prompt
+      if (statusElement) showCraftingStatus('Rewriting...', '');
+      result = await rewriteExistingPrompt(currentPrompt, profile);
+      textareaElement.value = result;
+      clearFieldError(textareaElement);
+      if (statusElement) showCraftingStatus('Prompt rewritten!', 'success');
+    }
+  } catch (error) {
+    console.error('[Kaguya Writer] Smart rewrite error:', error);
+    if (statusElement) showCraftingStatus('Failed. Please try again.', 'error');
+  } finally {
+    buttonElement.disabled = false;
+    buttonElement.classList.remove('breathing');
+  }
+}
+
+// Generate a scroll name from a prompt
+async function generateScrollName(prompt, profile) {
+  const namePrompt = `Based on the following prompt, generate a short, concise name (2-4 words) for this scroll/action. The name should clearly describe what the prompt does.
+
+Prompt:
+${prompt}
+
+Output ONLY the name, nothing else:`;
+
+  const response = await fetch(profile.apiUrl, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${profile.apiKey}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      model: profile.model || 'gpt-4o',
+      messages: [
+        { role: 'system', content: 'You are a helpful assistant that creates concise, descriptive names for writing actions.' },
+        { role: 'user', content: namePrompt }
+      ],
+      temperature: 0.7,
+      max_tokens: 50
+    })
+  });
+  
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`API error: ${error}`);
+  }
+  
+  const data = await response.json();
+  return data.choices[0].message.content.trim();
+}
+
+// Generate a scroll prompt from a name
+async function generateScrollPrompt(name, profile) {
+  const promptTemplate = `Based on the name "${name}", create a clear and effective prompt template for rewriting or creating text. The prompt should:
+- Be clear and direct
+- Include {{text}} placeholder for the input
+- Be concise but effective
+
+Output ONLY the prompt template, nothing else:`;
+
+  const response = await fetch(profile.apiUrl, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${profile.apiKey}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      model: profile.model || 'gpt-4o',
+      messages: [
+        { role: 'system', content: 'You are a prompt engineering expert. Create effective writing prompts.' },
+        { role: 'user', content: promptTemplate }
+      ],
+      temperature: 0.7,
+      max_tokens: 200
+    })
+  });
+  
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`API error: ${error}`);
+  }
+  
+  const data = await response.json();
+  let generatedPrompt = data.choices[0].message.content.trim();
+  
+  // Ensure {{text}} placeholder exists
+  if (!generatedPrompt.includes('{{text}}')) {
+    generatedPrompt += '\n\n{{text}}';
+  }
+  
+  return generatedPrompt;
+}
+
+// Rewrite an existing prompt
+async function rewriteExistingPrompt(prompt, profile) {
   const rewritePrompt = `Rewrite the following prompt to be clear and concise. Focus on:
 - Clarity and directness
 - No overly verbose instructions
@@ -1307,55 +1423,41 @@ async function smartRewritePrompt(textareaElement, buttonElement, statusElement)
 - Keep the same intent but make it more effective
 
 Original prompt:
-${currentText}
+${prompt}
 
 Rewritten prompt (output ONLY the rewritten prompt, nothing else):`;
 
-  try {
-    const response = await fetch(profile.apiUrl, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${profile.apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: profile.model || 'gpt-4o',
-        messages: [
-          { role: 'system', content: 'You are a prompt optimization assistant. Rewrite prompts to be clear, concise, and effective.' },
-          { role: 'user', content: rewritePrompt }
-        ],
-        temperature: 0.7,
-        max_tokens: 500
-      })
-    });
-    
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`API error: ${error}`);
-    }
-    
-    const data = await response.json();
-    let rewrittenPrompt = data.choices[0].message.content.trim();
-    
-    // Ensure {{text}} placeholder exists
-    if (!rewrittenPrompt.includes('{{text}}')) {
-      rewrittenPrompt += '\n\n{{text}}';
-    }
-    
-    // Update textarea
-    textareaElement.value = rewrittenPrompt;
-    
-    // Clear any error states
-    clearFieldError(textareaElement);
-    
-    if (statusElement) showCraftingStatus('Prompt rewritten!', 'success');
-  } catch (error) {
-    console.error('[Kaguya Writer] Smart rewrite error:', error);
-    if (statusElement) showCraftingStatus('Rewrite failed. Please try again.', 'error');
-  } finally {
-    buttonElement.disabled = false;
-    buttonElement.classList.remove('breathing');
+  const response = await fetch(profile.apiUrl, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${profile.apiKey}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      model: profile.model || 'gpt-4o',
+      messages: [
+        { role: 'system', content: 'You are a prompt optimization assistant. Rewrite prompts to be clear, concise, and effective.' },
+        { role: 'user', content: rewritePrompt }
+      ],
+      temperature: 0.7,
+      max_tokens: 500
+    })
+  });
+  
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`API error: ${error}`);
   }
+  
+  const data = await response.json();
+  let rewrittenPrompt = data.choices[0].message.content.trim();
+  
+  // Ensure {{text}} placeholder exists
+  if (!rewrittenPrompt.includes('{{text}}')) {
+    rewrittenPrompt += '\n\n{{text}}';
+  }
+  
+  return rewrittenPrompt;
 }
 
 // ==================== MESSAGE HANDLER ====================
