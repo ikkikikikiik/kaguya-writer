@@ -318,6 +318,16 @@ function startNewChat() {
   };
   messageIdCounter = 0;
   renderChat();
+  updateChatPlaceholder();
+}
+
+// Update chat input placeholder based on conversation state
+function updateChatPlaceholder() {
+  if (conversation.messages.length === 0) {
+    elements.chatInput.placeholder = 'Ask Kaguya';
+  } else {
+    elements.chatInput.placeholder = 'Ask a follow up...';
+  }
 }
 
 // Add a message to the chat
@@ -332,6 +342,7 @@ function addMessage(role, content, isStreaming = false) {
   conversation.messages.push(message);
   renderMessage(message);
   scrollToBottom();
+  updateChatPlaceholder();
   return message;
 }
 
@@ -385,12 +396,12 @@ function renderChat() {
         <p>Select text on any page and right-click to use actions, or start a conversation here.</p>
       </div>
     `;
-    return;
+  } else {
+    elements.chatMessages.innerHTML = '';
+    conversation.messages.forEach(message => renderMessage(message));
+    scrollToBottom();
   }
-  
-  elements.chatMessages.innerHTML = '';
-  conversation.messages.forEach(message => renderMessage(message));
-  scrollToBottom();
+  updateChatPlaceholder();
 }
 
 // Render a single message
