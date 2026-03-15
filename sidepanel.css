@@ -189,6 +189,27 @@ body {
   color: var(--text-secondary);
 }
 
+.message-copy-btn {
+  margin-left: auto;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  opacity: 0;
+  transition: all 0.2s;
+}
+
+.message:hover .message-copy-btn {
+  opacity: 1;
+}
+
+.message-copy-btn:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
 .message-avatar {
   width: 20px;
   height: 20px;

@@ -142,7 +142,6 @@ const elements = {
   sendMessage: document.getElementById('sendMessage'),
   chatStatus: document.getElementById('chatStatus'),
   newChat: document.getElementById('newChat'),
-  copyLastMessage: document.getElementById('copyLastMessage'),
   
   // Profile Management
   profileSelect: document.getElementById('profileSelect'),
@@ -206,7 +205,6 @@ function setupEventListeners() {
   });
   elements.chatInput.addEventListener('input', autoResizeTextarea);
   elements.newChat.addEventListener('click', startNewChat);
-  elements.copyLastMessage.addEventListener('click', copyLastMessage);
   
   // Profile management
   elements.profileSelect.addEventListener('change', handleProfileSelect);
@@ -317,17 +315,28 @@ function renderMessage(message) {
   const avatar = message.role === 'user' ? '👤' : '🌙';
   const label = message.role === 'user' ? 'You' : 'Kaguya';
   
-  const contentEl = document.createElement('div');
-  contentEl.className = 'message-content';
-  contentEl.innerHTML = formatMessageContent(message.content);
-  
+  // Create message structure
   msgEl.innerHTML = `
     <div class="message-header">
       <span class="message-avatar">${avatar}</span>
       <span class="message-label">${label}</span>
+      ${!message.isStreaming ? `
+        <button class="message-copy-btn" title="Copy message" data-message-id="${message.id}">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+          </svg>
+        </button>
+      ` : ''}
     </div>
+    <div class="message-content">${formatMessageContent(message.content)}</div>
   `;
-  msgEl.appendChild(contentEl);
+  
+  // Add copy handler
+  const copyBtn = msgEl.querySelector('.message-copy-btn');
+  if (copyBtn) {
+    copyBtn.addEventListener('click', () => copyMessage(message.id));
+  }
   
   elements.chatMessages.appendChild(msgEl);
 }
@@ -592,19 +601,17 @@ function showChatStatus(message, type) {
   elements.chatStatus.className = 'chat-status' + (type ? ` ${type}` : '');
 }
 
-// Copy last message
-async function copyLastMessage() {
-  const lastMessage = conversation.messages
-    .filter(m => m.role === 'assistant' && !m.isStreaming)
-    .pop();
+// Copy specific message
+async function copyMessage(messageId) {
+  const message = conversation.messages.find(m => m.id === messageId);
   
-  if (!lastMessage) {
-    showChatStatus('No message to copy', 'error');
+  if (!message || !message.content) {
+    showChatStatus('Nothing to copy', 'error');
     return;
   }
   
   try {
-    await navigator.clipboard.writeText(lastMessage.content);
+    await navigator.clipboard.writeText(message.content);
     showChatStatus('Copied!', '');
     setTimeout(() => showChatStatus('', ''), 1500);
   } catch (err) {
