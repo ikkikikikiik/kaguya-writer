@@ -140,25 +140,18 @@ async function buildContextMenus() {
     const toneActions = actions.filter(a => a.category === 'tone');
     const lengthActions = actions.filter(a => a.category === 'length');
     const createActions = actions.filter(a => a.category === 'create');
+    const customActions = actions.filter(a => a.category === 'custom' || !a.category);
     
-    // Create parent menu for page context (no selection - create only)
-    if (quickActions.length > 0 || createActions.length > 0) {
+    // Create parent menu for page context (no selection - create mode only)
+    const pageContextActions = [...quickActions, ...createActions, ...customActions.filter(a => a.mode === 'create')];
+    if (pageContextActions.length > 0) {
       chrome.contextMenus.create({
         id: 'kaguya-writer-page',
         title: '🌙 Kaguya Writer',
         contexts: ['page']
       });
       
-      for (const action of quickActions) {
-        chrome.contextMenus.create({
-          id: `page-${action.id}`,
-          parentId: 'kaguya-writer-page',
-          title: action.label,
-          contexts: ['page']
-        });
-      }
-      
-      for (const action of createActions) {
+      for (const action of pageContextActions) {
         chrome.contextMenus.create({
           id: `page-${action.id}`,
           parentId: 'kaguya-writer-page',
@@ -170,7 +163,7 @@ async function buildContextMenus() {
     
     // Create parent menu for text selection - FLAT structure
     if (quickActions.length > 0 || rewriteActions.length > 0 || toneActions.length > 0 || 
-        lengthActions.length > 0 || createActions.length > 0) {
+        lengthActions.length > 0 || createActions.length > 0 || customActions.length > 0) {
       chrome.contextMenus.create({
         id: 'kaguya-writer-selection',
         title: '🌙 Kaguya Writer',
@@ -244,6 +237,30 @@ async function buildContextMenus() {
       // Create Actions
       if (createActions.length > 0) {
         for (const action of createActions) {
+          chrome.contextMenus.create({
+            id: `sel-${action.id}`,
+            parentId: 'kaguya-writer-selection',
+            title: action.label,
+            contexts: ['selection']
+          });
+        }
+      }
+      
+      // Custom Actions (user-created)
+      if (customActions.length > 0) {
+        // Add separator if there are default actions
+        if (quickActions.length > 0 || rewriteActions.length > 0 || toneActions.length > 0 || 
+            lengthActions.length > 0 || createActions.length > 0) {
+          chrome.contextMenus.create({
+            id: 'sep-before-custom',
+            parentId: 'kaguya-writer-selection',
+            title: '────────────',
+            contexts: ['selection'],
+            enabled: false
+          });
+        }
+        
+        for (const action of customActions) {
           chrome.contextMenus.create({
             id: `sel-${action.id}`,
             parentId: 'kaguya-writer-selection',
