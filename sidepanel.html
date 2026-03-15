@@ -36,7 +36,44 @@
         <!-- Input Area -->
         <div class="chat-input-area">
           <div id="chatStatus" class="chat-status"></div>
+          
+          <!-- Attachment Preview -->
+          <div id="attachmentPreview" class="attachment-preview hidden">
+            <div class="attachment-item">
+              <span class="attachment-icon">📎</span>
+              <span class="attachment-name" id="attachmentName">image.png</span>
+              <button class="attachment-remove" id="removeAttachment" title="Remove">✕</button>
+            </div>
+          </div>
+          
           <div class="chat-input-wrapper">
+            <!-- Attachment Button -->
+            <button id="attachBtn" class="attach-btn" title="Add attachment">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 5v14M5 12h14"/>
+              </svg>
+            </button>
+            
+            <!-- Attachment Menu -->
+            <div id="attachMenu" class="attach-menu hidden">
+              <button class="attach-option" id="attachImage" title="Upload image">
+                <span class="attach-icon">🖼️</span>
+                <span>Image</span>
+              </button>
+              <button class="attach-option" id="attachPDF" title="Upload PDF">
+                <span class="attach-icon">📄</span>
+                <span>PDF</span>
+              </button>
+              <button class="attach-option" id="attachPage" title="Attach current page">
+                <span class="attach-icon">🌐</span>
+                <span>Webpage</span>
+              </button>
+            </div>
+            
+            <!-- Hidden file inputs -->
+            <input type="file" id="imageInput" accept="image/*" style="display: none;">
+            <input type="file" id="pdfInput" accept=".pdf" style="display: none;">
+            
             <textarea 
               id="chatInput" 
               class="chat-input" 

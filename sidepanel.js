@@ -166,6 +166,16 @@ const elements = {
   chatMessages: document.getElementById('chatMessages'),
   chatInput: document.getElementById('chatInput'),
   sendMessage: document.getElementById('sendMessage'),
+  attachBtn: document.getElementById('attachBtn'),
+  attachMenu: document.getElementById('attachMenu'),
+  attachImage: document.getElementById('attachImage'),
+  attachPDF: document.getElementById('attachPDF'),
+  attachPage: document.getElementById('attachPage'),
+  imageInput: document.getElementById('imageInput'),
+  pdfInput: document.getElementById('pdfInput'),
+  attachmentPreview: document.getElementById('attachmentPreview'),
+  attachmentName: document.getElementById('attachmentName'),
+  removeAttachment: document.getElementById('removeAttachment'),
   chatStatus: document.getElementById('chatStatus'),
   newChat: document.getElementById('newChat'),
   
@@ -214,6 +224,7 @@ let profiles = [];
 let activeProfileId = null;
 let currentActions = [];
 let currentTagFilter = 'all';
+let currentAttachment = null; // { type: 'image'|'pdf'|'page', data: ..., name: ... }
 
 // Initialize
 async function init() {
@@ -255,6 +266,22 @@ function setupEventListeners() {
   });
   elements.chatInput.addEventListener('input', autoResizeTextarea);
   elements.newChat.addEventListener('click', startNewChat);
+  
+  // Attachments
+  elements.attachBtn.addEventListener('click', toggleAttachMenu);
+  elements.attachImage.addEventListener('click', () => triggerFileUpload('image'));
+  elements.attachPDF.addEventListener('click', () => triggerFileUpload('pdf'));
+  elements.attachPage.addEventListener('click', attachCurrentPage);
+  elements.imageInput.addEventListener('change', (e) => handleFileSelect(e, 'image'));
+  elements.pdfInput.addEventListener('change', (e) => handleFileSelect(e, 'pdf'));
+  elements.removeAttachment.addEventListener('click', clearAttachment);
+  
+  // Close attach menu when clicking outside
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.attach-btn') && !e.target.closest('.attach-menu')) {
+      hideAttachMenu();
+    }
+  });
   
   // Profile management
   elements.profileSelect.addEventListener('change', handleProfileSelect);
@@ -538,17 +565,45 @@ function scrollToBottom() {
 // Handle sending a message
 async function handleSendMessage() {
   const text = elements.chatInput.value.trim();
-  if (!text || conversation.isStreaming) return;
+  if ((!text && !currentAttachment) || conversation.isStreaming) return;
   
-  addMessage('user', text);
+  // Build message with attachment context
+  let fullMessage = text;
+  if (currentAttachment) {
+    const attachmentContext = buildAttachmentContext();
+    fullMessage = text ? `${text}\n\n${attachmentContext}` : attachmentContext;
+  }
+  
+  addMessage('user', text || '[Attachment]');
   elements.chatInput.value = '';
   elements.chatInput.style.height = 'auto';
   
-  await sendChatMessage(text);
+  // Clear attachment after sending
+  const attachmentWasPresent = !!currentAttachment;
+  clearAttachment();
+  
+  await sendChatMessage(fullMessage, attachmentWasPresent);
+}
+
+// Build attachment context for the message
+function buildAttachmentContext() {
+  if (!currentAttachment) return '';
+  
+  const { type, data, name } = currentAttachment;
+  
+  if (type === 'page') {
+    return `[Attached Webpage: ${data.title} (${data.url})]\n\nPage Content:\n${data.content}`;
+  } else if (type === 'image') {
+    return `[Attached Image: ${name}]\n\nNote: The image has been attached but may not be directly viewable by the AI depending on the model capabilities.`;
+  } else if (type === 'pdf') {
+    return `[Attached PDF: ${name}]\n\nNote: A PDF file has been attached. The AI may have limited ability to process PDF content depending on the model.`;
+  }
+  
+  return '';
 }
 
 // Send a chat message and get AI response
-async function sendChatMessage(userMessage) {
+async function sendChatMessage(userMessage, hasAttachment = false) {
   const profile = getActiveProfile();
   
   if (!profile || !profile.apiKey) {
@@ -1330,6 +1385,137 @@ async function resetScrolls() {
   await chrome.storage.local.set({ actions: currentActions });
   renderScrollsList();
   chrome.runtime.sendMessage({ type: 'REFRESH_MENUS' }).catch(() => {});
+}
+
+// ==================== ATTACHMENT HANDLING ====================
+
+// Toggle attachment menu visibility
+function toggleAttachMenu() {
+  elements.attachMenu.classList.toggle('hidden');
+  elements.attachBtn.classList.toggle('active');
+}
+
+// Hide attachment menu
+function hideAttachMenu() {
+  elements.attachMenu.classList.add('hidden');
+  elements.attachBtn.classList.remove('active');
+}
+
+// Trigger file upload based on type
+function triggerFileUpload(type) {
+  hideAttachMenu();
+  if (type === 'image') {
+    elements.imageInput.click();
+  } else if (type === 'pdf') {
+    elements.pdfInput.click();
+  }
+}
+
+// Handle file selection
+async function handleFileSelect(event, type) {
+  const file = event.target.files[0];
+  if (!file) return;
+  
+  if (type === 'image') {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      currentAttachment = {
+        type: 'image',
+        data: e.target.result,
+        name: file.name
+      };
+      showAttachmentPreview(file.name);
+    };
+    reader.readAsDataURL(file);
+  } else if (type === 'pdf') {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      currentAttachment = {
+        type: 'pdf',
+        data: e.target.result,
+        name: file.name
+      };
+      showAttachmentPreview(file.name);
+    };
+    reader.readAsDataURL(file);
+  }
+  
+  // Clear input for next selection
+  event.target.value = '';
+}
+
+// Attach current webpage content
+async function attachCurrentPage() {
+  hideAttachMenu();
+  
+  try {
+    // Get active tab
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab) {
+      showStatus(elements.chatStatus, 'Cannot access current page', 'error');
+      return;
+    }
+    
+    // Execute script to get page content
+    const results = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: () => {
+        const title = document.title;
+        const url = window.location.href;
+        // Get main content - prioritize article/main/content areas
+        const contentSelectors = [
+          'article',
+          'main',
+          '[role="main"]',
+          '.content',
+          '.article-content',
+          '#content'
+        ];
+        
+        let content = '';
+        for (const selector of contentSelectors) {
+          const el = document.querySelector(selector);
+          if (el) {
+            content = el.innerText.substring(0, 5000); // Limit to 5000 chars
+            break;
+          }
+        }
+        
+        // Fallback to body if no content found
+        if (!content) {
+          content = document.body.innerText.substring(0, 5000);
+        }
+        
+        return { title, url, content };
+      }
+    });
+    
+    if (results && results[0] && results[0].result) {
+      const { title, url, content } = results[0].result;
+      currentAttachment = {
+        type: 'page',
+        data: { title, url, content },
+        name: title || 'Current Page'
+      };
+      showAttachmentPreview(currentAttachment.name);
+    }
+  } catch (error) {
+    console.error('[Kaguya Writer] Failed to attach page:', error);
+    showStatus(elements.chatStatus, 'Failed to attach page content', 'error');
+  }
+}
+
+// Show attachment preview
+function showAttachmentPreview(name) {
+  elements.attachmentName.textContent = name;
+  elements.attachmentPreview.classList.remove('hidden');
+}
+
+// Clear current attachment
+function clearAttachment() {
+  currentAttachment = null;
+  elements.attachmentPreview.classList.add('hidden');
+  elements.attachmentName.textContent = '';
 }
 
 // Smart rewrite prompt using AI
