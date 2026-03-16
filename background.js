@@ -7,7 +7,7 @@ const GLOBAL_INSTRUCTIONS = `CRITICAL INSTRUCTIONS:
 - NO multiple versions - provide ONE result only
 - NO questions at the end
 - NO formatting markers like ** or > unless necessary for the output
-- PRESERVE the original language of the input text, detecting nuances (e.g., Traditional vs Simplified Chinese) and generating output in the same language variant
+- PRESERVE the original language of the input text, detecting nuances and generating output in the same language variant
 
 `;
 

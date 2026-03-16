@@ -1,6 +1,7 @@
 # 🌙 Kaguya Writer
 
 AI writing toolkit for Chrome. Right-click any text to rewrite, summarize, or chat with AI.
+<img width="2427" height="1312" alt="image" src="https://github.com/user-attachments/assets/1e2cb2c3-fa50-408e-9a2c-c0c575b88224" />
 
 ## Features
 
