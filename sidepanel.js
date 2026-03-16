@@ -178,6 +178,7 @@ const elements = {
   removeAttachment: document.getElementById('removeAttachment'),
   chatStatus: document.getElementById('chatStatus'),
   newChat: document.getElementById('newChat'),
+  scrollToBottomBtn: document.getElementById('scrollToBottomBtn'),
   
   // Profile Management
   profileSelect: document.getElementById('profileSelect'),
@@ -226,6 +227,10 @@ let currentActions = [];
 let currentTagFilter = 'all';
 let currentAttachment = null; // { type: 'image'|'pdf'|'page', data: ..., name: ... }
 
+// Auto-scroll state
+let isUserScrolledUp = false;
+let scrollThreshold = 50; // pixels from bottom to consider "at bottom"
+
 // Initialize
 async function init() {
   setupEventListeners();
@@ -266,6 +271,18 @@ function setupEventListeners() {
   });
   elements.chatInput.addEventListener('input', autoResizeTextarea);
   elements.newChat.addEventListener('click', startNewChat);
+  
+  // Auto-scroll behavior
+  elements.chatMessages.addEventListener('scroll', handleChatScroll);
+  
+  // Scroll to bottom button
+  if (elements.scrollToBottomBtn) {
+    elements.scrollToBottomBtn.addEventListener('click', () => {
+      isUserScrolledUp = false;
+      scrollToBottom(true);
+      updateScrollButton();
+    });
+  }
   
   // Attachments
   elements.attachBtn.addEventListener('click', toggleAttachMenu);
@@ -348,6 +365,7 @@ function startNewChat() {
     currentContext: null
   };
   messageIdCounter = 0;
+  isUserScrolledUp = false;
   renderChat();
   updateChatPlaceholder();
 }
@@ -431,7 +449,7 @@ function renderChat() {
   } else {
     elements.chatMessages.innerHTML = '';
     conversation.messages.forEach(message => renderMessage(message));
-    scrollToBottom();
+    scrollToBottom(true); // Force scroll when loading context
   }
   updateChatPlaceholder();
 }
@@ -573,9 +591,43 @@ function formatMessageContent(content) {
     .replace(/\n/g, '<br>');
 }
 
-// Scroll to bottom of chat
-function scrollToBottom() {
-  elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight;
+// Check if user is at bottom of chat
+function isAtBottom() {
+  const container = elements.chatMessages;
+  const threshold = scrollThreshold;
+  return (container.scrollHeight - container.scrollTop - container.clientHeight) <= threshold;
+}
+
+// Smart scroll to bottom - only if user hasn't scrolled up
+function scrollToBottom(force = false) {
+  if (force || !isUserScrolledUp) {
+    elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight;
+  }
+}
+
+// Update scroll-to-bottom button visibility
+function updateScrollButton() {
+  const btn = elements.scrollToBottomBtn;
+  if (!btn) return;
+  
+  if (isUserScrolledUp) {
+    btn.classList.remove('hidden');
+  } else {
+    btn.classList.add('hidden');
+  }
+}
+
+// Handle scroll event on chat messages
+function handleChatScroll() {
+  const atBottom = isAtBottom();
+  
+  if (atBottom) {
+    isUserScrolledUp = false;
+  } else {
+    isUserScrolledUp = true;
+  }
+  
+  updateScrollButton();
 }
 
 // Handle sending a message

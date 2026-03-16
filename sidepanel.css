@@ -198,6 +198,59 @@ body {
   border-color: rgba(100, 220, 255, 0.2);
 }
 
+/* Scroll to Bottom Button */
+.scroll-to-bottom-btn {
+  position: absolute;
+  bottom: 180px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(100, 200, 255, 0.2), rgba(100, 200, 255, 0.1));
+  border: 1px solid rgba(100, 220, 255, 0.3);
+  backdrop-filter: blur(10px) saturate(180%);
+  -webkit-backdrop-filter: blur(10px) saturate(180%);
+  color: var(--flow-cyan);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 
+    0 4px 20px rgba(0, 0, 0, 0.3),
+    0 0 20px rgba(100, 200, 255, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  transition: all 0.3s var(--viscous-flow);
+  z-index: 100;
+  animation: bounceIn 0.3s var(--liquid-spring);
+}
+
+.scroll-to-bottom-btn:hover {
+  background: linear-gradient(135deg, rgba(100, 200, 255, 0.3), rgba(100, 200, 255, 0.15));
+  border-color: rgba(100, 220, 255, 0.5);
+  box-shadow: 
+    0 6px 24px rgba(0, 0, 0, 0.4),
+    0 0 30px rgba(100, 200, 255, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  transform: translateX(-50%) translateY(-2px);
+}
+
+.scroll-to-bottom-btn:active {
+  transform: translateX(-50%) scale(0.95);
+}
+
+.scroll-to-bottom-btn.hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-50%) translateY(10px);
+}
+
+@keyframes bounceIn {
+  0% { opacity: 0; transform: translateX(-50%) scale(0.8); }
+  60% { transform: translateX(-50%) scale(1.1); }
+  100% { opacity: 1; transform: translateX(-50%) scale(1); }
+}
+
 /* Welcome State */
 .chat-welcome {
   text-align: center;
