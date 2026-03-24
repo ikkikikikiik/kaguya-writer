@@ -241,9 +241,16 @@ async function getActiveProfile() {
   return DEFAULT_PROFILE;
 }
 
-// Known create mode action IDs (for immediate side panel open before async)
+// Known create mode action IDs (default actions for immediate side panel open before async)
 const CREATE_MODE_IDS = new Set([
   'summarize', 'explain', 'tagline', 'social-media'
+]);
+
+// Known rewrite mode action IDs (default actions for immediate side panel open before async)
+const REWRITE_MODE_IDS = new Set([
+  'paraphrase', 'improve', 'tone-academic', 'tone-professional', 
+  'tone-persuasive', 'tone-casual', 'tone-funny', 
+  'length-shorter', 'length-longer'
 ]);
 
 // Handle context menu clicks
@@ -266,14 +273,38 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     actionId = actionId.replace('sel-', '');
   }
   
-  // Check if this is likely a create mode action BEFORE any async operations
-  const isCreateMode = CREATE_MODE_IDS.has(actionId) || 
-                       actionId.startsWith('action-') || 
-                       actionId.startsWith('scroll-');
+  // First, check the cache synchronously to determine the action mode
+  // This is necessary because we need to decide whether to open the side panel
+  // BEFORE any async operations (to preserve user gesture context)
+  let isCreateMode = null; // null = unknown, will need to check storage
+  
+  // Check cache first for known default actions
+  if (CREATE_MODE_IDS.has(actionId)) {
+    isCreateMode = true;
+  } else if (REWRITE_MODE_IDS.has(actionId)) {
+    isCreateMode = false;
+  } else if (actionsCache) {
+    // Check the cache for custom scrolls (action-*, scroll-*)
+    const cachedAction = actionsCache.find(a => a.id === actionId);
+    if (cachedAction) {
+      isCreateMode = cachedAction.mode === 'create';
+    }
+  }
+  
+  // If still unknown, make an educated guess based on ID patterns
+  // Custom scrolls default to create mode for safety (old behavior)
+  // But we'll correct this after checking storage
+  let guessedCreateMode = isCreateMode;
+  if (guessedCreateMode === null) {
+    // Unknown action ID - could be a newly created custom scroll not in cache yet
+    // Default to NOT opening side panel for unknown IDs (safer for rewrite mode)
+    // We'll open it later if needed after checking storage
+    guessedCreateMode = false;
+  }
   
   // For create mode, open side panel IMMEDIATELY before any async work
   let sidePanelPromise = null;
-  if (isCreateMode) {
+  if (isCreateMode === true || (isCreateMode === null && guessedCreateMode)) {
     // This MUST be called synchronously before any await
     sidePanelPromise = chrome.sidePanel.open({ windowId: tab.windowId });
   }
@@ -294,18 +325,29 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   let selectedText = info.selectionText || '';
   
   if (action.mode === 'create') {
-    // Use the already-started side panel open promise
-    try {
-      await sidePanelPromise;
-      sidePanelOpen = true;
-      
-      if (selectedText && info.menuItemId.startsWith('sel-')) {
-        sendActionToSidePanel(action, selectedText, false);
-      } else {
-        handleCreateModeWithPageContent(action, tab);
+    // Open side panel if not already opened
+    if (!sidePanelPromise) {
+      try {
+        await chrome.sidePanel.open({ windowId: tab.windowId });
+        sidePanelOpen = true;
+      } catch (error) {
+        console.error('[Kaguya Writer] Failed to open side panel:', error);
+        return;
       }
-    } catch (error) {
-      console.error('[Kaguya Writer] Failed to open side panel:', error);
+    } else {
+      try {
+        await sidePanelPromise;
+        sidePanelOpen = true;
+      } catch (error) {
+        console.error('[Kaguya Writer] Failed to open side panel:', error);
+        return;
+      }
+    }
+    
+    if (selectedText && info.menuItemId.startsWith('sel-')) {
+      sendActionToSidePanel(action, selectedText, false);
+    } else {
+      handleCreateModeWithPageContent(action, tab);
     }
   } else if (action.mode === 'rewrite') {
     if (!selectedText) {
