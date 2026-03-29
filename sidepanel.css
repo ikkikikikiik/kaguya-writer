@@ -399,8 +399,9 @@ body {
 /* Message Attachment Indicator */
 .message-attachment {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   margin-top: 6px;
   padding: 6px 10px;
   background: rgba(100, 200, 255, 0.08);
@@ -409,6 +410,7 @@ body {
   font-size: 12px;
   color: var(--text-secondary);
   width: fit-content;
+  max-width: 100%;
   backdrop-filter: blur(10px);
 }
 
@@ -417,10 +419,10 @@ body {
 }
 
 .message-attachment .attachment-name {
-  max-width: 200px;
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 /* Streaming Indicator */
@@ -742,6 +744,7 @@ body {
 /* Attachment Preview */
 .attachment-preview {
   display: flex;
+  flex-direction: column;
   gap: 8px;
   margin-bottom: 8px;
   padding: 0 4px;
@@ -750,6 +753,12 @@ body {
 
 .attachment-preview.hidden {
   display: none;
+}
+
+.attachments-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .attachment-item {
@@ -762,6 +771,7 @@ body {
   border-radius: 20px;
   font-size: 13px;
   color: var(--text-secondary);
+  animation: slideIn 0.2s ease;
 }
 
 .attachment-icon {
@@ -769,7 +779,7 @@ body {
 }
 
 .attachment-name {
-  max-width: 150px;
+  max-width: 120px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -784,9 +794,30 @@ body {
   font-size: 12px;
   border-radius: 4px;
   transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .attachment-remove:hover {
+  color: #ff6b6b;
+  background: rgba(255, 100, 100, 0.1);
+}
+
+.clear-all-btn {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  margin-top: 4px;
+}
+
+.clear-all-btn:hover {
   color: #ff6b6b;
   background: rgba(255, 100, 100, 0.1);
 }

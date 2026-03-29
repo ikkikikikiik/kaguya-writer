@@ -174,8 +174,8 @@ const elements = {
   imageInput: document.getElementById('imageInput'),
   pdfInput: document.getElementById('pdfInput'),
   attachmentPreview: document.getElementById('attachmentPreview'),
-  attachmentName: document.getElementById('attachmentName'),
-  removeAttachment: document.getElementById('removeAttachment'),
+  attachmentsList: document.getElementById('attachmentsList'),
+  clearAllAttachments: document.getElementById('clearAllAttachments'),
   chatStatus: document.getElementById('chatStatus'),
   newChat: document.getElementById('newChat'),
   scrollToBottomBtn: document.getElementById('scrollToBottomBtn'),
@@ -225,7 +225,7 @@ let profiles = [];
 let activeProfileId = null;
 let currentActions = [];
 let currentTagFilter = 'all';
-let currentAttachment = null; // { type: 'image'|'pdf'|'page', data: ..., name: ... }
+let currentAttachments = []; // [{ type: 'image'|'pdf'|'page', data: ..., name: ... }, ...]
 
 // Auto-scroll state
 let isUserScrolledUp = false;
@@ -291,7 +291,7 @@ function setupEventListeners() {
   elements.attachPage.addEventListener('click', attachCurrentPage);
   elements.imageInput.addEventListener('change', (e) => handleFileSelect(e, 'image'));
   elements.pdfInput.addEventListener('change', (e) => handleFileSelect(e, 'pdf'));
-  elements.removeAttachment.addEventListener('click', clearAttachment);
+  elements.clearAllAttachments.addEventListener('click', clearAttachment);
   
   // Close attach menu when clicking outside
   document.addEventListener('click', (e) => {
@@ -479,12 +479,14 @@ function renderMessage(message) {
   // Build attachment indicator if present
   let attachmentHtml = '';
   if (message.attachment) {
-    const { type, name } = message.attachment;
-    const icon = type === 'image' ? '🖼️' : type === 'pdf' ? '📄' : type === 'page' ? '🌐' : '📎';
+    const attachments = Array.isArray(message.attachment) ? message.attachment : [message.attachment];
+    const icons = attachments.map(a => {
+      const icon = a.type === 'image' ? '🖼️' : a.type === 'pdf' ? '📄' : a.type === 'page' ? '🌐' : '📎';
+      return `<span class="attachment-name" title="${escapeHtml(a.name)}">${icon} ${escapeHtml(a.name)}</span>`;
+    }).join('');
     attachmentHtml = `
       <div class="message-attachment">
-        <span class="attachment-icon">${icon}</span>
-        <span class="attachment-name">${escapeHtml(name)}</span>
+        ${icons}
       </div>
     `;
   }
@@ -633,50 +635,57 @@ function handleChatScroll() {
 // Handle sending a message
 async function handleSendMessage() {
   const text = elements.chatInput.value.trim();
-  if ((!text && !currentAttachment) || conversation.isStreaming) return;
+  if ((!text && currentAttachments.length === 0) || conversation.isStreaming) return;
   
   // Store attachment reference before clearing
-  const attachmentForMessage = currentAttachment;
+  const attachmentsToSend = [...currentAttachments];
   
   // Build message with attachment context (for text-only display)
   let fullMessage = text;
-  if (attachmentForMessage) {
-    const attachmentContext = buildAttachmentContext(attachmentForMessage);
+  if (attachmentsToSend.length > 0) {
+    const attachmentContext = buildAttachmentContext(attachmentsToSend);
     fullMessage = text ? `${text}\n\n${attachmentContext}` : attachmentContext;
   }
   
-  addMessage('user', text || '[Attachment]', false, attachmentForMessage);
+  addMessage('user', text || '[Attachments]', false, attachmentsToSend.length > 0 ? attachmentsToSend : null);
   elements.chatInput.value = '';
   elements.chatInput.style.height = 'auto';
   
   // Clear attachment from UI
   clearAttachment();
   
-  await sendChatMessage(fullMessage, attachmentForMessage);
+  await sendChatMessage(fullMessage, attachmentsToSend);
 }
 
 // Build attachment context for the message
-function buildAttachmentContext(attachment) {
-  if (!attachment) attachment = currentAttachment;
-  if (!attachment) return '';
+function buildAttachmentContext(attachments) {
+  if (!attachments || attachments.length === 0) return '';
+  if (!Array.isArray(attachments)) attachments = [attachments];
   
-  const { type, data, name } = attachment;
+  const contexts = [];
   
-  if (type === 'page') {
-    return `[Attached Webpage: ${data.title} (${data.url})]\n\nPage Content:\n${data.content}`;
-  } else if (type === 'image') {
-    return `[Attached Image: ${name}]`;
-  } else if (type === 'pdf') {
-    // data now contains the extracted text - truncate if too long for API
-    const maxLength = 15000; // Reasonable limit for most APIs
-    let pdfContent = data;
-    if (data.length > maxLength) {
-      pdfContent = data.substring(0, maxLength) + '\n\n[PDF truncated due to length...]';
+  for (const attachment of attachments) {
+    const { type, data, name } = attachment;
+    
+    if (type === 'page') {
+      contexts.push(`[Attached Webpage: ${data.title} (${data.url})]\n\nPage Content:\n${data.content}`);
+    } else if (type === 'image') {
+      contexts.push(`[Attached Image: ${name}]`);
+    } else if (type === 'pdf') {
+      const maxLength = 15000;
+      let pdfContent = data;
+      if (data.length > maxLength) {
+        pdfContent = data.substring(0, maxLength) + '\n\n[PDF truncated due to length...]';
+      }
+      contexts.push(`[Attached PDF: ${name}]\n\nPDF Content:\n${pdfContent}`);
     }
-    return `[Attached PDF: ${name}]\n\nPDF Content:\n${pdfContent}`;
   }
   
-  return '';
+  if (contexts.length === 1) {
+    return contexts[0];
+  }
+  
+  return contexts.map((ctx, i) => `--- Attachment ${i + 1} ---\n${ctx}`).join('\n\n');
 }
 
 // Send a chat message and get AI response
@@ -709,7 +718,13 @@ async function sendChatMessage(userMessage, attachment = null) {
     showChatStatus('', '');
   } catch (error) {
     console.error('[Kaguya Writer] Chat error:', error);
-    updateMessage(assistantMsg.id, `Error: ${error.message}`);
+    let errorMsg = error.message;
+    if (error.message.includes('does not support image input') || 
+        error.message.includes('image_url') ||
+        error.message.includes('Cannot read')) {
+      errorMsg = 'Your current model does not support image attachments. Please use a vision-capable model (e.g., GPT-4 Vision) or remove image attachments.';
+    }
+    updateMessage(assistantMsg.id, `Error: ${errorMsg}`);
     completeMessage(assistantMsg.id);
     showChatStatus('Error occurred', 'error');
   } finally {
@@ -719,7 +734,7 @@ async function sendChatMessage(userMessage, attachment = null) {
 }
 
 // Build messages array for API from conversation history
-function buildMessagesForAPI(currentUserMessage, attachment = null) {
+function buildMessagesForAPI(currentUserMessage, attachments = null) {
   const messages = [];
   
   if (conversation.currentContext) {
@@ -732,24 +747,35 @@ function buildMessagesForAPI(currentUserMessage, attachment = null) {
   const history = conversation.messages; // Include all conversation history
   for (const msg of history) {
     if (!msg.isStreaming && msg.content) {
-      // Check if this message has an image attachment that needs to be included
-      if (msg.attachment && msg.attachment.type === 'image') {
-        // Include image in content array format for vision models
-        messages.push({
-          role: msg.role,
-          content: [
-            { type: 'text', text: msg.content },
-            { type: 'image_url', image_url: { url: msg.attachment.data } }
-          ]
-        });
-      } else if (msg.attachment && msg.attachment.type === 'page') {
-        // Include webpage content with the message
-        const { title, url, content } = msg.attachment.data;
-        const fullContent = `${msg.content}\n\n[Attached Website: ${title}]\nURL: ${url}\n\nContent:\n${content}`;
-        messages.push({
-          role: msg.role,
-          content: fullContent
-        });
+      // Check if this message has attachments that need to be included
+      const msgAttachments = msg.attachment;
+      if (msgAttachments) {
+        const attachmentsArray = Array.isArray(msgAttachments) ? msgAttachments : [msgAttachments];
+        const hasImage = attachmentsArray.some(a => a.type === 'image');
+        const hasPage = attachmentsArray.some(a => a.type === 'page');
+        
+        if (hasImage) {
+          // Include images in content array format for vision models
+          const content = [{ type: 'text', text: msg.content }];
+          for (const att of attachmentsArray) {
+            if (att.type === 'image') {
+              content.push({ type: 'image_url', image_url: { url: att.data } });
+            }
+          }
+          messages.push({ role: msg.role, content });
+        } else if (hasPage) {
+          // Include all webpage content with the message
+          let fullContent = msg.content;
+          for (const att of attachmentsArray) {
+            if (att.type === 'page') {
+              const { title, url, content } = att.data;
+              fullContent += `\n\n[Attached Webpage: ${title}]\nURL: ${url}\n\nContent:\n${content}`;
+            }
+          }
+          messages.push({ role: msg.role, content: fullContent });
+        } else {
+          messages.push({ role: msg.role, content: msg.content });
+        }
       } else {
         messages.push({
           role: msg.role,
@@ -761,23 +787,40 @@ function buildMessagesForAPI(currentUserMessage, attachment = null) {
   
   const lastMsg = history[history.length - 1];
   if (!lastMsg || lastMsg.role !== 'user' || lastMsg.content !== currentUserMessage) {
-    // Check if there's an image attachment to send as multimodal content
-    if (attachment && attachment.type === 'image') {
-      // OpenAI vision format with content array
-      const content = [];
-      if (currentUserMessage) {
-        content.push({ type: 'text', text: currentUserMessage });
-      }
-      content.push({
-        type: 'image_url',
-        image_url: {
-          url: attachment.data // base64 data URL
+    // Check if there are attachments to send as multimodal content
+    if (attachments && attachments.length > 0) {
+      const hasImage = attachments.some(a => a.type === 'image');
+      const hasOnlyPages = attachments.every(a => a.type === 'page');
+      
+      if (hasImage) {
+        // OpenAI vision format with content array for images
+        const content = [];
+        if (currentUserMessage) {
+          content.push({ type: 'text', text: currentUserMessage });
         }
-      });
-      messages.push({
-        role: 'user',
-        content: content
-      });
+        for (const att of attachments) {
+          if (att.type === 'image') {
+            content.push({
+              type: 'image_url',
+              image_url: { url: att.data }
+            });
+          }
+        }
+        messages.push({ role: 'user', content });
+      } else if (hasOnlyPages) {
+        // Multiple pages - include all content
+        let fullContent = currentUserMessage;
+        for (let i = 0; i < attachments.length; i++) {
+          const att = attachments[i];
+          if (att.type === 'page') {
+            const { title, url, content } = att.data;
+            fullContent += `\n\n--- Webpage ${i + 1}: ${title} ---\nURL: ${url}\n\n${content}`;
+          }
+        }
+        messages.push({ role: 'user', content: fullContent });
+      } else {
+        messages.push({ role: 'user', content: currentUserMessage });
+      }
     } else {
       messages.push({
         role: 'user',
@@ -1535,12 +1578,13 @@ async function handleFileSelect(event, type) {
   if (type === 'image') {
     const reader = new FileReader();
     reader.onload = (e) => {
-      currentAttachment = {
+      const attachment = {
         type: 'image',
         data: e.target.result,
         name: file.name
       };
-      showAttachmentPreview(file.name);
+      currentAttachments.push(attachment);
+      showAttachmentPreview();
     };
     reader.readAsDataURL(file);
   } else if (type === 'pdf') {
@@ -1548,24 +1592,26 @@ async function handleFileSelect(event, type) {
     try {
       const arrayBuffer = await file.arrayBuffer();
       const text = await extractPDFText(arrayBuffer);
-      currentAttachment = {
+      const attachment = {
         type: 'pdf',
         data: text,
         name: file.name
       };
-      showAttachmentPreview(file.name);
+      currentAttachments.push(attachment);
+      showAttachmentPreview();
     } catch (error) {
       console.error('[Kaguya Writer] PDF extraction failed:', error);
       showStatus(elements.chatStatus, 'Failed to extract PDF text', 'error');
       // Fall back to raw data
       const reader = new FileReader();
       reader.onload = (e) => {
-        currentAttachment = {
+        const attachment = {
           type: 'pdf',
           data: `[PDF file: ${file.name}]`,
           name: file.name
         };
-        showAttachmentPreview(file.name);
+        currentAttachments.push(attachment);
+        showAttachmentPreview();
       };
       reader.readAsDataURL(file);
     }
@@ -1642,12 +1688,13 @@ async function attachCurrentPage() {
     
     if (results && results[0] && results[0].result) {
       const { title, url, content } = results[0].result;
-      currentAttachment = {
+      const attachment = {
         type: 'page',
         data: { title, url, content },
         name: title || 'Current Page'
       };
-      showAttachmentPreview(currentAttachment.name);
+      currentAttachments.push(attachment);
+      showAttachmentPreview();
     }
   } catch (error) {
     console.error('[Kaguya Writer] Failed to attach page:', error);
@@ -1656,16 +1703,53 @@ async function attachCurrentPage() {
 }
 
 // Show attachment preview
-function showAttachmentPreview(name) {
-  elements.attachmentName.textContent = name;
+function showAttachmentPreview() {
+  if (currentAttachments.length === 0) {
+    elements.attachmentPreview.classList.add('hidden');
+    return;
+  }
+  
+  const listEl = elements.attachmentsList;
+  listEl.innerHTML = '';
+  
+  for (let i = 0; i < currentAttachments.length; i++) {
+    const att = currentAttachments[i];
+    const icon = att.type === 'image' ? '🖼️' : att.type === 'pdf' ? '📄' : att.type === 'page' ? '🌐' : '📎';
+    
+    const itemEl = document.createElement('div');
+    itemEl.className = 'attachment-item';
+    itemEl.innerHTML = `
+      <span class="attachment-icon">${icon}</span>
+      <span class="attachment-name" title="${escapeHtml(att.name)}">${escapeHtml(att.name)}</span>
+      <button class="attachment-remove" data-index="${i}" title="Remove">✕</button>
+    `;
+    listEl.appendChild(itemEl);
+  }
+  
   elements.attachmentPreview.classList.remove('hidden');
+  
+  // Attach remove handlers
+  listEl.querySelectorAll('.attachment-remove').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const idx = parseInt(e.target.dataset.index, 10);
+      removeAttachment(idx);
+    });
+  });
 }
 
-// Clear current attachment
+// Remove single attachment by index
+function removeAttachment(index) {
+  if (index >= 0 && index < currentAttachments.length) {
+    currentAttachments.splice(index, 1);
+    showAttachmentPreview();
+  }
+}
+
+// Clear all attachments
 function clearAttachment() {
-  currentAttachment = null;
+  currentAttachments = [];
   elements.attachmentPreview.classList.add('hidden');
-  elements.attachmentName.textContent = '';
+  elements.attachmentsList.innerHTML = '';
 }
 
 // Smart rewrite prompt using AI
